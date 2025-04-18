@@ -1,0 +1,20 @@
+# .gitignore content (edit as needed)
+
+*.h5
+*.pt
+*.pkl
+*.zip
+*.tar
+*.mp4
+*.avi
+__pycache__/
+node_modules/
+.DS_Store
+.env
+
+isl_data/
+model/
+uploads/
+mediapipe/
+isl_model/
+
