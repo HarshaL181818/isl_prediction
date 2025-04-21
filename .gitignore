@@ -5,6 +5,6 @@ __pycache__/
 node_modules/
 .DS_Store
 .env
-
+backend/uploads/
 isl_data/
 isl_datav2/
