@@ -30,8 +30,8 @@ if gpus:
 else:
     print("⚠ No GPU found. Running on CPU.")
 
-MODEL_PATH = 'backend/model/isl_bilstm_model_v1.h5'
-ENCODER_PATH = 'backend/model/label_encoder_v1.pkl'
+MODEL_PATH = 'backend/model/isl_bilstm_model_v2.h5'
+ENCODER_PATH = 'backend/model/label_encoder_v2.pkl'
 MAX_FRAMES = 117
 FEATURE_DIM = 225
 
@@ -109,21 +109,21 @@ def predict_sign():
 
 @app.route('/get-dataset-videos')
 def get_dataset_videos():
-    dataset_dir = 'backend/isl_data'
+    dataset_dir = 'backend/isl_datav2'
     dataset = {}
 
     for label in os.listdir(dataset_dir):
         label_path = os.path.join(dataset_dir, label)
         if os.path.isdir(label_path):
             videos = os.listdir(label_path)
-            dataset[label] = [f"data/{label}/{vid}" for vid in videos if vid.endswith(('.mp4', '.MOV', '.mov'))]
+            dataset[label] = [f"data/{label}/{vid}" for vid in videos if vid.lower().endswith(('.mp4', '.mov'))]
 
     return jsonify(dataset)
 
 
 @app.route('/data/<label>/<video>')
 def serve_video(label, video):
-    return send_from_directory(os.path.join('isl_data', label), video)
+    return send_from_directory(os.path.join('isl_datav2', label), video)
 
 @app.route('/generate_context', methods=['POST'])
 def generate_context():

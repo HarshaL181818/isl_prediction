@@ -1,15 +1,10 @@
 # .gitignore content (edit as needed)
 
-*.pt
-*.zip
-*.tar
-*.avi
+
 __pycache__/
 node_modules/
 .DS_Store
 .env
 
 isl_data/
-mediapipe/
-isl_model/
-
+isl_datav2/
