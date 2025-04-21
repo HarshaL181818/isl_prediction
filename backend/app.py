@@ -109,7 +109,7 @@ def predict_sign():
 
 @app.route('/get-dataset-videos')
 def get_dataset_videos():
-    dataset_dir = 'isl_data'
+    dataset_dir = 'backend/isl_data'
     dataset = {}
 
     for label in os.listdir(dataset_dir):
