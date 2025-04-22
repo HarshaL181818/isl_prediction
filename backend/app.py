@@ -122,23 +122,21 @@ def get_dataset_videos():
 
 @app.route('/predict-live', methods=['POST'])
 def predict_live():
-    if 'frame' not in request.files:
-        return jsonify({'error': 'No frame uploaded'}), 400
+    print("Received files:", request.files)
+    print("Received form data:", request.form)
 
-    frame = request.files['frame']
-    filename = secure_filename(frame.filename)
-    frame_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    frame.save(frame_path)
+    if 'video' not in request.files:
+        return jsonify({'error': 'No video uploaded'}), 400
 
-    # Read the saved frame and process it
-    img = cv2.imread(frame_path)
-    if img is None:
-        return jsonify({'error': 'Unable to read frame'}), 400
 
-    # Extract the keypoints from the frame
-    sequence = extract_sequence_from_video(frame_path, max_frames=MAX_FRAMES)
+    video = request.files['video']
+    filename = secure_filename(video.filename)
+    video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    video.save(video_path)
 
-    # If sequence is empty, pad with zeros
+    # Extract keypoints from the saved video
+    sequence = extract_sequence_from_video(video_path, max_frames=MAX_FRAMES)
+
     if sequence.size == 0:
         sequence = np.zeros((MAX_FRAMES, FEATURE_DIM))
     elif sequence.shape[0] < MAX_FRAMES:
@@ -148,13 +146,11 @@ def predict_live():
         sequence = sequence[:MAX_FRAMES]
 
     sequence = np.expand_dims(sequence, axis=0)
-
-    # Make prediction
     prediction = model.predict(sequence)
     predicted_label = label_encoder.inverse_transform([np.argmax(prediction)])[0]
 
-    # Return predicted label
     return jsonify({'predicted_label': predicted_label})
+
 
 
 @app.route('/data/<label>/<video>')
