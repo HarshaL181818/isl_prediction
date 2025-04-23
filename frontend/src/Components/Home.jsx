@@ -73,18 +73,29 @@ function Home() {
 
     let predictions = "";
     try {
+      const uploadPromises = [];
+
       for (let i = 0; i < files.length; i++) {
         const formData = new FormData();
         formData.append("video", files[i]);
 
-        const response = await axios.post("http://localhost:5000/predict-sign", formData, {
+        const uploadPromise = axios.post("http://localhost:5000/predict-sign", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
         });
+
+        uploadPromises.push(uploadPromise);
+      }
+
+      const responses = await Promise.all(uploadPromises);
+
+      let predictions = "";
+      responses.forEach(response => {
         const cleanedPrediction = cleanPrediction(response.data.label);
         predictions += cleanedPrediction + " ";
-      }
+      });
+
 
       const finalWords = predictions.trim();
       setMultiResult(finalWords);

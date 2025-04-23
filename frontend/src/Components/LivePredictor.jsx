@@ -76,15 +76,15 @@ const LivePredictor = () => {
     // Set up interval for continuous recordings
     recordingSessionRef.current = setInterval(() => {
       startSingleRecording();
-    }, 6000); // 5s recording + 1s buffer for processing
+    }, 4000); // 5s recording + 1s buffer for processing
   };
 
   const startSingleRecording = () => {
     setIsRecording(true);
-    setCountdown(5);
+    setCountdown(3);
     recordedChunksRef.current = [];
-
-    // Start countdown timer
+  
+    // Countdown runs for 3 seconds
     countdownIntervalRef.current = setInterval(() => {
       setCountdown(prevCount => {
         if (prevCount <= 1) {
@@ -94,56 +94,41 @@ const LivePredictor = () => {
         return prevCount - 1;
       });
     }, 1000);
-
+  
     const options = { mimeType: 'video/webm' };
     try {
       const mediaRecorder = new MediaRecorder(streamRef.current, options);
       mediaRecorderRef.current = mediaRecorder;
-
+  
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
-
-      mediaRecorder.onstop = async () => {
+  
+      mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+  
+        // Log the size of the video blob (in bytes)
+        console.log('Received video length:', blob.size, 'bytes');
+        
         const formData = new FormData();
         formData.append('video', blob, 'clip.webm');
-
-        try {
-          setLoading(true);
-          const response = await fetch('http://localhost:5000/predict-live', {
-            method: 'POST',
-            body: formData,
-          });
-
-          const data = await response.json();
-          setPrediction(data.predicted_label);
-          
-          // Add to prediction history with timestamp
-          const timestamp = new Date().toLocaleTimeString();
-          setAllPredictions(prev => [...prev, {
-            prediction: data.predicted_label,
-            timestamp
-          }]);
-          
-        } catch (err) {
-          console.error('Prediction error:', err);
-          setError('Prediction failed.');
-        } finally {
-          setLoading(false);
-          setIsRecording(false);
-        }
+  
+        // Don't block recording cycle, call async function
+        processPrediction(formData);
       };
-
+  
       mediaRecorder.start();
+  
+      // Stop recording after exactly 3s
       setTimeout(() => {
         if (mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
         }
-      }, 5000); // record for 5s
-      
+        setIsRecording(false);  // Ensure recording state ends exactly after 3s
+      }, 3000);
+  
     } catch (err) {
       console.error('MediaRecorder error:', err);
       setError('Recording failed. Your browser may not support this feature.');
@@ -151,6 +136,29 @@ const LivePredictor = () => {
       clearInterval(countdownIntervalRef.current);
     }
   };
+  
+  
+  const processPrediction = async (formData) => {
+    try {
+      const response = await fetch('http://localhost:5000/predict-live', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      const data = await response.json();
+      setPrediction(data.predicted_label);
+  
+      const timestamp = new Date().toLocaleTimeString();
+      setAllPredictions(prev => [...prev, {
+        prediction: data.predicted_label,
+        timestamp
+      }]);
+    } catch (err) {
+      console.error('Prediction error:', err);
+      setError('Prediction failed.');
+    }
+  };
+  
 
   const stopContinuousRecording = () => {
     setIsActive(false);
