@@ -1,0 +1,151 @@
+/* Components/AboutPage.css */
+
+:root {
+    --primary-color: #0077cc;
+    --secondary-color: #005fa3;
+    --background-light: #f9f9f9;
+    --text-dark: #333;
+    --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --border-radius: 12px;
+  }
+  
+  .about-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-dark);
+  }
+  
+  .about-hero {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  
+  .about-hero h1 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
+  }
+  
+  .about-hero .lead {
+    font-size: 1.2rem;
+    color: #555;
+  }
+  
+  .card {
+    background: white;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+  }
+  
+  .about-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: space-between;
+  }
+  
+  .about-card {
+    flex: 1;
+    min-width: 250px;
+    background-color: var(--background-light);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    text-align: center;
+  }
+  
+  .about-card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .how-it-works .process-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .process-step {
+    flex: 1;
+    min-width: 220px;
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .step-number {
+    font-size: 1.8rem;
+    color: var(--secondary-color);
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  
+  .tech-items {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  
+  .tech-item {
+    flex: 1;
+    min-width: 200px;
+    text-align: center;
+    margin: 1rem 0;
+  }
+  
+  .get-started {
+    text-align: center;
+  }
+  
+  .cta-buttons {
+    margin-top: 1rem;
+  }
+  
+  .cta-buttons .btn {
+    padding: 0.75rem 1.5rem;
+    margin: 0.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    color: white;
+  }
+  
+  .btn-primary {
+    background-color: var(--primary-color);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--secondary-color);
+  }
+  
+  .btn-secondary {
+    background-color: gray;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #555;
+  }
+  
+  /* Responsive tweaks */
+  @media (max-width: 768px) {
+    .about-cards,
+    .how-it-works .process-steps,
+    .tech-items {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .about-card,
+    .process-step,
+    .tech-item {
+      width: 100%;
+    }
+  }
+  

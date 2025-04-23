@@ -1,0 +1,303 @@
+/* Components/Home.css */
+.home-container {
+    padding-bottom: 2rem;
+  }
+  
+  /* Hero Section */
+  .hero-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+  }
+  
+  .hero-content {
+    flex: 1;
+  }
+  
+  .hero-description {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+  
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .hero-image {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .sign-language-icon {
+    font-size: 10rem;
+    color: var(--primary-color);
+    background-color: rgba(99, 102, 241, 0.1);
+    width: 250px;
+    height: 250px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Features Section */
+  .features-section {
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+  
+  .features-grid {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  
+  .feature-card {
+    flex: 1;
+    background-color: var(--card-background);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+    max-width: 300px;
+  }
+  
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Upload Cards */
+  .upload-cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: center;
+  }
+  
+  .upload-card {
+    background-color: var(--card-background);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    width: 100%;
+    max-width: 550px;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .upload-card h3 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: var(--primary-color);
+  }
+  
+  /* File Input Styling */
+  .file-input-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+  
+  .file-input {
+    position: absolute;
+    left: -9999px;
+  }
+  
+  .file-input-label {
+    display: block;
+    padding: 1rem;
+    background-color: var(--background-color);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+  }
+  
+  .file-input-label:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+  
+/* Components/Home.css continued */
+.file-clear-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+  }
+  
+  .file-clear-btn:hover {
+    color: var(--error-color);
+  }
+  
+  /* Action Buttons */
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .btn.loading {
+    position: relative;
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+  
+  .spinner-small {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+  }
+  
+  /* Selected Files */
+  .selected-files {
+    margin-bottom: 1.5rem;
+  }
+  
+  .files-list {
+    list-style: none;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+  }
+  
+  .file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .file-item:last-child {
+    border-bottom: none;
+  }
+  
+  .file-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80%;
+  }
+  
+  .remove-file-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 2px 8px;
+    line-height: 1;
+  }
+  
+  .remove-file-btn:hover {
+    color: var(--error-color);
+  }
+  
+  /* Results */
+  .result-container {
+    background-color: var(--background-color);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin-top: 1rem;
+  }
+  
+  .result-container h4 {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+  }
+  
+  .prediction-result {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  
+  .generated-sentence {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: var(--card-background);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--accent-color);
+  }
+  
+  .elapsed-time {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: right;
+    font-style: italic;
+  }
+  
+  .error-message {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--error-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .hero-section {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .hero-buttons {
+      justify-content: center;
+    }
+    
+    .features-grid {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .sign-language-icon {
+      font-size: 8rem;
+      width: 200px;
+      height: 200px;
+    }
+    
+    .upload-cards-container {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
