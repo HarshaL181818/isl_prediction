@@ -8,6 +8,8 @@ import Navbar from './Components/Navbar';
 import Footer from './Components/Footer';
 import AboutPage from './Components/AboutPage';
 import './App.css';
+import DataCollector from './Components/DataCollector';
+import VideoStream from './Components/VideoStream';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
             <Route path="/live-prediction" element={<LivePredictor />} />
             <Route path="/dataset" element={<DatasetViewer />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/collect" element={<DataCollector />} />
+            <Route path="/stream" element={<VideoStream />} />
           </Routes>
         </main>
         <Footer />
