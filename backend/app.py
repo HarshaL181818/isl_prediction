@@ -347,21 +347,12 @@ def generate_context():
 
     return {'generated_sentence': results}
 
-from flask import Flask, render_template
+from flask import Flask
 from flask_socketio import SocketIO, emit
-import cv2
-import base64
-import numpy as np
-import mediapipe as mp
 
-app.config['SECRET_KEY'] = 'hello123' 
-socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=10_000_000)
-
-mp_holistic = mp.solutions.holistic
-holistic = mp_holistic.Holistic(
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+app = Flask(__name__)
+# No secret key needed for simple data emission if not using sessions
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 @socketio.on('connect')
 def handle_connect():
@@ -371,40 +362,14 @@ def handle_connect():
 def handle_disconnect():
     print('❌ Client disconnected')
 
-@socketio.on('frame')
-def handle_frame(binary_data):  # <== Now receiving raw binary blob
-    if getattr(handle_frame, 'busy', False):
-        return
-    handle_frame.busy = True
-
-    try:
-        # Read raw JPEG bytes directly from blob
-        nparr = np.frombuffer(binary_data, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if frame is None:
-            print("⚠️ cv2.imdecode failed")
-            return
-
-        frame_height, frame_width = frame.shape[:2]
-        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = holistic.process(image_rgb)
-
-        def extract(landmarks):
-            return [{'x': int(l.x * frame_width), 'y': int(l.y * frame_height)} for l in landmarks.landmark] if landmarks else []
-
-        emit('processed_frame', {
-            'pose': extract(results.pose_landmarks),
-            'left_hand': extract(results.left_hand_landmarks),
-            'right_hand': extract(results.right_hand_landmarks),
-        })
-
-    except Exception as e:
-        print("❌ Error processing frame:", str(e))
-
-    finally:
-        handle_frame.busy = False
-
+# NEW: A new event to receive processed landmark data
+@socketio.on('landmark_data')
+def handle_landmark_data(data):
+    # 'data' is the JSON object sent from the client
+    # Now you can save it to a file, database, or process it further.
+    # This will be very light on the CPU.
+    # print("Received landmarks for pose:", len(data.get('poseLandmarks', [])))
+    pass # Add your data saving logic here
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)

@@ -1,169 +1,316 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
+// DataCollector.jsx
+// React component that reproduces the MediaPipe HandLandmarker demo (image click detection + webcam continuous detection)
+// - No external npm packages required (uses dynamic import of MediaPipe Tasks from CDN)
+// - Drop this file in your React app (must run in a modern browser that allows dynamic ESM imports from CDN)
+// Usage: import DataCollector from './DataCollector'; then use <DataCollector /> in your app
 
-const DataCollector = () => {
-  const [isActive, setIsActive] = useState(false);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const socketRef = useRef(null);
-  const landmarksRef = useRef(null);
-  const animationFrameId = useRef(null);
-  const offscreenCanvasRef = useRef(document.createElement('canvas'));
+import React, { useEffect, useRef, useState } from 'react';
 
-  const drawLandmarks = (ctx, landmarks, color) => {
-    if (!landmarks) return;
-    ctx.fillStyle = color;
-    landmarks.forEach(lm => {
-      ctx.beginPath();
-      ctx.arc(lm.x, lm.y, 4, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-  };
+// Typical MediaPipe hand connections used for drawing lines between landmarks
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17]
+];
 
-  const drawPolyline = (ctx, landmarks, color) => {
-    if (!landmarks || landmarks.length === 0) return;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+function drawConnectors(ctx, landmarks, connections, opts = {}) {
+  const lineWidth = opts.lineWidth ?? 2;
+  const color = opts.color ?? '#00FF00';
+  ctx.save();
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = color;
+  for (const pair of connections) {
+    const [i, j] = pair;
+    const a = landmarks[i];
+    const b = landmarks[j];
+    if (!a || !b) continue;
     ctx.beginPath();
-    ctx.moveTo(landmarks[0].x, landmarks[0].y);
-    for (let i = 1; i < landmarks.length; i++) {
-      ctx.lineTo(landmarks[i].x, landmarks[i].y);
-    }
+    ctx.moveTo(a.x * ctx.canvas.width, a.y * ctx.canvas.height);
+    ctx.lineTo(b.x * ctx.canvas.width, b.y * ctx.canvas.height);
     ctx.stroke();
+  }
+  ctx.restore();
+}
 
-    ctx.fillStyle = color;
-    landmarks.forEach(lm => {
-      ctx.beginPath();
-      ctx.arc(lm.x, lm.y, 3, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-  };
+function drawLandmarks(ctx, landmarks, opts = {}) {
+  const radius = opts.radius ?? 4;
+  let color = opts.color ?? '#FF0000';
 
-  const renderLoop = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState !== 4) return;
+  // If handedness info is provided, choose color accordingly
+  console.log(opts);
+  if (opts.handedness === 'Left') {
+    color = '#00FF00'; // green for left hand
+  } else if (opts.handedness === 'Right') {
+    color = '#0000FF'; // blue for right hand
+  }
 
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.fillStyle = color;
 
-    const landmarks = landmarksRef.current;
-    if (landmarks) {
-      drawPolyline(ctx, landmarks.left_hand, '#00FF00');  // green
-      drawPolyline(ctx, landmarks.right_hand, '#0000FF'); // blue
-      drawLandmarks(ctx, landmarks.pose, '#FF0000');       // red
-    }
+  for (const p of landmarks) {
+    if (!p) continue;
+    ctx.beginPath();
+    ctx.arc(
+      p.x * ctx.canvas.width,
+      p.y * ctx.canvas.height,
+      radius,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+  }
 
-    animationFrameId.current = requestAnimationFrame(renderLoop);
-  };
+  ctx.restore();
+}
 
-  const sendFrameLoop = () => {
-    const video = videoRef.current;
-    const socket = socketRef.current;
-    if (!video || !socket) return;
 
-    const canvas = offscreenCanvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+export default function DataCollector() {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null); // overlay for webcam
+  const containerRef = useRef(null);
+  const [handLandmarker, setHandLandmarker] = useState(null);
+  const runningModeRef = useRef('IMAGE');
+  const webcamRunningRef = useRef(false);
+  const lastVideoTimeRef = useRef(-1);
+  const rafRef = useRef(null);
 
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        socket.emit('frame', blob);
-      }
-    }, 'image/jpeg', 0.5); // quality: 0.5
-
-    setTimeout(sendFrameLoop, 66); // ~15fps
-  };
-
+  // --- Load MediaPipe Tasks (HandLandmarker) dynamically on mount ---
   useEffect(() => {
-    if (isActive) {
-      console.log("Starting data collection...");
+    let mounted = true;
+    let createdHL = null;
 
-      socketRef.current = io('http://localhost:5000', {
-        transports: ['websocket'],
-        upgrade: false,
-      });
-      socketRef.current.binaryType = 'arraybuffer';
+    (async () => {
+      try {
+        // dynamic import from CDN
+        const mp = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0');
+        const { FilesetResolver, HandLandmarker } = mp;
 
-      navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
-        .then(stream => {
-          const video = videoRef.current;
-          video.srcObject = stream;
-          video.onloadedmetadata = () => {
-            video.play();
-            requestAnimationFrame(renderLoop);
-            sendFrameLoop();
-          };
-        })
-        .catch(err => {
-          console.error("Error accessing webcam:", err);
-          alert("Could not access camera");
-          setIsActive(false);
+        // load wasm files for the tasks
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+        );
+
+        createdHL = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            // model hosted by MediaPipe
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            // if GPU fails for you, replace with 'CPU'
+            delegate: 'GPU'
+          },
+          runningMode: runningModeRef.current,
+          numHands: 2
         });
 
-      socketRef.current.on('processed_frame', (data) => {
-        landmarksRef.current = data;
-      });
+        if (!mounted) {
+          if (createdHL && createdHL.close) createdHL.close();
+          return;
+        }
 
-    } else {
-      console.log("Stopping data collection...");
-      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      if (socketRef.current) socketRef.current.disconnect();
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
+        setHandLandmarker(createdHL);
+        // Reveal that the model is ready in console
+        console.info('HandLandmarker ready');
+      } catch (err) {
+        console.error('Failed to load MediaPipe HandLandmarker', err);
       }
-      canvasRef.current?.getContext('2d')?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    }
+    })();
 
     return () => {
-      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      if (socketRef.current) socketRef.current.disconnect();
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      mounted = false;
+      // stop webcam if running
+      webcamRunningRef.current = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (videoRef.current && videoRef.current.srcObject) {
+        const s = videoRef.current.srcObject;
+        s.getTracks().forEach((t) => t.stop());
+        videoRef.current.srcObject = null;
       }
+      if (createdHL && createdHL.close) createdHL.close();
     };
-  }, [isActive]);
+  }, []);
+
+  // --- Image click detection handler ---
+  const handleImageClick = async (e) => {
+    if (!handLandmarker) {
+      console.warn('Model not ready yet');
+      return;
+    }
+
+    const img = e.currentTarget; // wrapper div (we attach listener to wrapper)
+    const imageEl = img.querySelector('img');
+
+    try {
+      // switch to IMAGE mode if necessary
+      if (runningModeRef.current === 'VIDEO') {
+        runningModeRef.current = 'IMAGE';
+        await handLandmarker.setOptions({ runningMode: 'IMAGE' });
+      }
+
+      // remove any previous overlay canvases for this wrapper
+      const previous = img.querySelector('.mp-overlay-canvas');
+      if (previous) previous.remove();
+
+      // create overlay canvas sized to displayed img
+      const canvas = document.createElement('canvas');
+      canvas.className = 'mp-overlay-canvas';
+      // use natural size for drawing accuracy, but style to fit element
+      canvas.width = imageEl.naturalWidth || imageEl.width;
+      canvas.height = imageEl.naturalHeight || imageEl.height;
+      canvas.style.position = 'absolute';
+      canvas.style.left = '0px';
+      canvas.style.top = '0px';
+      canvas.style.width = imageEl.clientWidth + 'px';
+      canvas.style.height = imageEl.clientHeight + 'px';
+      canvas.style.pointerEvents = 'none';
+      img.appendChild(canvas);
+
+      // detect on the clicked image
+      const result = await handLandmarker.detect(imageEl);
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (result && result.landmarks) {
+        // draw all detected hands
+        for (const landmarks of result.landmarks) {
+          drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+          drawLandmarks(ctx, landmarks, { color: '#FF0000', radius: 4 });
+        }
+      } else {
+        console.info('No hands detected');
+      }
+    } catch (err) {
+      console.error('Error running detection on image', err);
+    }
+  };
+
+  // --- Webcam control ---
+  const toggleWebcam = async () => {
+    if (!handLandmarker) {
+      console.warn('Model not loaded yet');
+      return;
+    }
+
+    if (webcamRunningRef.current) {
+      // stop
+      webcamRunningRef.current = false;
+      if (videoRef.current && videoRef.current.srcObject) {
+        const s = videoRef.current.srcObject;
+        s.getTracks().forEach((t) => t.stop());
+        videoRef.current.srcObject = null;
+      }
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (!videoRef.current) return;
+        videoRef.current.srcObject = stream;
+        // ensure video plays
+        await videoRef.current.play();
+        webcamRunningRef.current = true;
+        // start loop
+        rafRef.current = requestAnimationFrame(predictWebcam);
+      } catch (err) {
+        console.error('Could not start webcam', err);
+      }
+    }
+  };
+
+  // --- predict loop for webcam ---
+  const predictWebcam = async () => {
+    if (!webcamRunningRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      rafRef.current = requestAnimationFrame(predictWebcam);
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    // match size
+    if (video.videoWidth && video.videoHeight) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.style.width = video.clientWidth + 'px';
+      canvas.style.height = video.clientHeight + 'px';
+    }
+
+    try {
+      if (runningModeRef.current === 'IMAGE') {
+        runningModeRef.current = 'VIDEO';
+        await handLandmarker.setOptions({ runningMode: 'VIDEO' });
+      }
+
+      const startTimeMs = performance.now();
+
+      if (lastVideoTimeRef.current !== video.currentTime) {
+        lastVideoTimeRef.current = video.currentTime;
+        // detectForVideo may be synchronous in some builds but awaiting is safe
+        const res = await handLandmarker.detectForVideo(video, startTimeMs);
+        // draw
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (res && res.landmarks) {
+          console.log(res)
+          for(var i = 0 ; i < res.handednesses.length ; i++)
+          {
+              const category = res.handednesses[i];
+              console.log(category[0].categoryName)
+              if(category[0].categoryName == "Left")
+                {
+                  
+                    drawConnectors(ctx, res.landmarks[i], HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+                    drawLandmarks(ctx, res.landmarks[i], { color: '#FF0000', radius: 3 });
+                   
+                }
+                else if(category[0].categoryName == "Right")
+                {
+                    drawConnectors(ctx, res.landmarks[i], HAND_CONNECTIONS, { color: '#6600ffff', lineWidth: 5 });
+                    drawLandmarks(ctx, res.landmarks[i], { color: '#0a0a0aff', radius: 3 });
+                    
+                }
+            
+          }
+          
+          
+          
+        }
+      }
+    } catch (err) {
+      console.error('Error during webcam prediction', err);
+    }
+
+    // continue loop
+    rafRef.current = requestAnimationFrame(predictWebcam);
+  };
 
   return (
-    <div style={{ textAlign: 'center' }}>
-      <h2>Data Collector</h2>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
-        <div>
-          <h4>Raw Video</h4>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            width="0"
-            height="0"
-            style={{ border: '2px solid #999', borderRadius: '8px' }}
-          />
-        </div>
-        <div>
-          <h4>Landmarked Video</h4>
-          <canvas
-            ref={canvasRef}
-            width="320"
-            height="240"
-            style={{ border: '2px solid #333', borderRadius: '8px' }}
-          />
-        </div>
-      </div>
+    <div ref={containerRef} className="p-4 max-w-4xl mx-auto">
+      <h2 className="text-xl font-semibold mb-3">Hand landmark detection (React)</h2>
 
-      <button
-        onClick={() => setIsActive(!isActive)}
-        style={{ marginTop: '40px', padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
-      >
-        {isActive ? 'Stop Collection' : 'Start Collection'}
-      </button>
+      
+
+      <section>
+        <h3 className="font-medium">Demo: Webcam continuous hand landmark detection</h3>
+        <p className="text-sm">Click the button and allow webcam access.</p>
+        <div className="mt-2">
+          <button
+            className="px-4 py-2 rounded bg-blue-600 text-white"
+            onClick={toggleWebcam}
+          >
+            {webcamRunningRef.current ? 'Disable Webcam' : 'Enable Webcam'}
+          </button>
+        </div>
+
+        <div className="mt-4" style={{ position: 'relative', width: '100%', maxWidth: 960 }}>
+          <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%' }} />
+          <canvas ref={canvasRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} />
+        </div>
+      </section>
+
+      <p className="mt-4 text-xs text-gray-500">Note: the component dynamically loads MediaPipe Tasks from CDN. If your bundler blocks remote ESM imports, either run this in a development server that allows dynamic ESM imports or include the official script in your public/index.html and adapt the loader accordingly.</p>
     </div>
   );
-};
-
-export default DataCollector;
+}
