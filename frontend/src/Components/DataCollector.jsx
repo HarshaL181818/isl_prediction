@@ -289,9 +289,6 @@ export default function DataCollector() {
       alert("Please enter a label/word first");
       return;
     }
-    pose = null
-    leftHand = null
-    rightHand = null
     setIsRecording(true);
   };
   const stopRecording = async () => {
