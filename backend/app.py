@@ -10,7 +10,6 @@ import cv2
 import numpy as np
 import pickle
 from tensorflow.keras.models import load_model
-import mediapipe as mp
 import tensorflow as tf
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -42,48 +41,6 @@ FEATURE_DIM = 225
 model = load_model(MODEL_PATH)
 with open(ENCODER_PATH, 'rb') as f:
     label_encoder = pickle.load(f)
-
-mp_holistic = mp.solutions.holistic
-
-def extract_sequence_from_video(video_path, max_frames=110):
-    sequence = []
-    cap = cv2.VideoCapture(video_path)
-
-    with mp_holistic.Holistic(static_image_mode=False, min_detection_confidence=0.5, model_complexity=1) as holistic:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = holistic.process(image)
-
-            pose = results.pose_landmarks.landmark if results.pose_landmarks else []
-            lh = results.left_hand_landmarks.landmark if results.left_hand_landmarks else []
-            rh = results.right_hand_landmarks.landmark if results.right_hand_landmarks else []
-
-            keypoints = []
-
-            if pose:
-                keypoints.extend([[lm.x, lm.y, lm.z] for lm in pose])
-            else:
-                keypoints.extend([[0, 0, 0]] * 33)
-
-            if lh:
-                keypoints.extend([[lm.x, lm.y, lm.z] for lm in lh])
-            else:
-                keypoints.extend([[0, 0, 0]] * 21)
-
-            if rh:
-                keypoints.extend([[lm.x, lm.y, lm.z] for lm in rh])
-            else:
-                keypoints.extend([[0, 0, 0]] * 21)
-
-            sequence.append(np.array(keypoints).flatten())
-
-        cap.release()
-
-    return np.array(sequence)
 
 
 @app.route('/predict-sign', methods=['POST'])
@@ -273,61 +230,6 @@ def predict_frames():
         print(f"[{request_id}] Error processing frames: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': f'Error processing frames: {str(e)}'}), 500
-
-def extract_landmarks_from_frames(frames, max_frames=110):
-    """
-    Extract landmarks from a list of frame images using MediaPipe.
-    
-    Args:
-        frames: List of OpenCV image arrays
-        max_frames: Maximum number of frames to process
-    
-    Returns:
-        numpy array of shape (n_frames, n_features) containing the landmarks
-    """
-    sequence = []
-    
-    with mp_holistic.Holistic(
-        static_image_mode=False,
-        min_detection_confidence=0.5,
-        model_complexity=1
-    ) as holistic:
-        for frame in frames[:max_frames]:
-            # Convert to RGB for MediaPipe
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-            # Process frame
-            results = holistic.process(image)
-            
-            # Extract landmarks
-            pose = results.pose_landmarks.landmark if results.pose_landmarks else []
-            lh = results.left_hand_landmarks.landmark if results.left_hand_landmarks else []
-            rh = results.right_hand_landmarks.landmark if results.right_hand_landmarks else []
-            
-            keypoints = []
-            
-            # Process pose (33 landmarks)
-            if pose:
-                keypoints.extend([[lm.x, lm.y, lm.z] for lm in pose])
-            else:
-                keypoints.extend([[0, 0, 0]] * 33)
-            
-            # Process left hand (21 landmarks)
-            if lh:
-                keypoints.extend([[lm.x, lm.y, lm.z] for lm in lh])
-            else:
-                keypoints.extend([[0, 0, 0]] * 21)
-            
-            # Process right hand (21 landmarks)
-            if rh:
-                keypoints.extend([[lm.x, lm.y, lm.z] for lm in rh])
-            else:
-                keypoints.extend([[0, 0, 0]] * 21)
-            
-            # Add flattened keypoints to sequence
-            sequence.append(np.array(keypoints).flatten())
-    
-    return np.array(sequence)
 
 
 
