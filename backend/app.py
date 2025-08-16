@@ -349,9 +349,15 @@ def generate_context():
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
+import os
+import time
+import json
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 
 app = Flask(__name__)
-# No secret key needed for simple data emission if not using sessions
+CORS(app) 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 @socketio.on('connect')
@@ -370,6 +376,49 @@ def handle_landmark_data(data):
     # This will be very light on the CPU.
     # print("Received landmarks for pose:", len(data.get('poseLandmarks', [])))
     pass # Add your data saving logic here
+
+@app.route('/save_data', methods=['POST'])
+def save_data():
+    data = request.json  # received from frontend
+    label = data.get("label")
+    samples = data.get("samples")
+    # Ensure dataset folder exists
+    os.makedirs(f"dataset/{label}", exist_ok=True)
+
+    # Unique file name
+    filename = f"dataset/{label}/{int(time.time())}.json"
+
+    # Save file
+    with open(filename, "w") as f:
+        json.dump(samples, f)
+
+    return jsonify({"status": "success", "file": filename})
+
+DATASET_DIR = "dataset"
+
+@app.route("/list_words", methods=["GET"])
+def list_words():
+    words = [d for d in os.listdir(DATASET_DIR) if os.path.isdir(os.path.join(DATASET_DIR, d))]
+    return jsonify(words)
+
+@app.route("/list_samples/<word>", methods=["GET"])
+def list_samples(word):
+    word_dir = os.path.join(DATASET_DIR, word)
+    if not os.path.exists(word_dir):
+        return jsonify([])
+
+    samples = [f for f in os.listdir(word_dir) if f.endswith(".json")]
+    return jsonify(samples)
+
+@app.route("/get_sample/<word>/<filename>", methods=["GET"])
+def get_sample(word, filename):
+    filepath = os.path.join(DATASET_DIR, word, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"error": "File not found"}), 404
+    
+    with open(filepath, "r") as f:
+        data = json.load(f)
+    return jsonify(data)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)

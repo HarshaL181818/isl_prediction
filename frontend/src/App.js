@@ -10,6 +10,7 @@ import AboutPage from './Components/AboutPage';
 import './App.css';
 import DataCollector from './Components/DataCollector';
 import VideoStream from './Components/VideoStream';
+import DatasetBrowser from './Components/DatasetBrowser';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/collect" element={<DataCollector />} />
             <Route path="/stream" element={<VideoStream />} />
+            <Route path="/view" element={<DatasetBrowser />} />
           </Routes>
         </main>
         <Footer />
