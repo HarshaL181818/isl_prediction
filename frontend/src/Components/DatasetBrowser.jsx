@@ -56,6 +56,7 @@ const DatasetBrowser = () => {
 
     setLoading(prev => ({ ...prev, data: true }));
     fetch(`http://localhost:5000/get_sample/${selectedWord}/${file}`)
+    
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
