@@ -69,6 +69,7 @@ function drawLandmarks(ctx, landmarks, opts = {}) {
 
 export default function DataCollector() {
   const videoRef = useRef(null);
+  let leftHand = null, rightHand = null, pose = null;
   const canvasRef = useRef(null); // overlay for webcam
   const containerRef = useRef(null);
   const [handLandmarker, setHandLandmarker] = useState(null);
@@ -231,7 +232,7 @@ export default function DataCollector() {
         ]);
         // draw
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        let leftHand = null, rightHand = null, pose = null;
+        
         if (handRes && handRes.landmarks) {
           for(let i = 0 ; i < handRes.handednesses.length ; i++)
           {
@@ -260,20 +261,42 @@ export default function DataCollector() {
             drawLandmarks(ctx, pose, { color: '#FF00FF', radius: 3 });
         }
         
-        if (isRecordingRef.current) {
-          console.log(label)
-          setRecordedData((prev) => {
-            const updated = { ...prev };
-            if (!updated[label]) updated[label] = [];
-            updated[label].push({
-              left: leftHand,
-              right: rightHand,
-              pose: pose,
-              ts: Date.now()
-            });
-            return updated;
-          });
+       // inside predictWebcam after detection
+        leftHandRef.current = null;
+        rightHandRef.current = null;
+        poseRef.current = null;
+
+        if (handRes && handRes.landmarks) {
+          for (let i = 0; i < handRes.handednesses.length; i++) {
+            const category = handRes.handednesses[i];
+            if (category[0].categoryName === "Left") {
+              leftHandRef.current = handRes.landmarks[i];
+            } else if (category[0].categoryName === "Right") {
+              rightHandRef.current = handRes.landmarks[i];
+            }
+          }
         }
+
+        if (poseRes && poseRes.landmarks) {
+          poseRef.current = poseRes.landmarks[0];
+        }
+
+        // save frame-wise data
+        if (isRecordingRef.current) {
+          setRecordedData((prev) => ({
+            [label]: [
+              ...(prev[label] || []),
+              {
+                left: leftHandRef.current,
+                right: rightHandRef.current,
+                pose: poseRef.current,
+                ts: Date.now()
+              }
+            ]
+          }));
+        }
+
+
 
       }
     } catch (err) {
@@ -289,8 +312,18 @@ export default function DataCollector() {
       alert("Please enter a label/word first");
       return;
     }
+    leftHandRef.current = null;
+    rightHandRef.current = null;
+    poseRef.current = null;
+    setRecordedData({ [label]: [] }); // clear old data
     setIsRecording(true);
   };
+
+
+  const leftHandRef = useRef(null);
+  const rightHandRef = useRef(null);
+  const poseRef = useRef(null);
+
   const stopRecording = async () => {
     setIsRecording(false);
     console.log("Recording stopped. Data:", recordedData);
