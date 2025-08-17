@@ -290,7 +290,9 @@ def save_data():
     os.makedirs(f"dataset/{label}", exist_ok=True)
 
     # Unique file name for the sample
-    filename = f"dataset/{label}/{int(time.time())}.json"
+    from datetime import datetime
+
+    filename = f"dataset/{label}/{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
     # Save the sample file
     with open(filename, "w") as f:
