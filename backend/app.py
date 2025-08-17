@@ -284,23 +284,57 @@ def save_data():
     data = request.json  # received from frontend
     label = data.get("label")
     samples = data.get("samples")
+    link = data.get("link")
+
     # Ensure dataset folder exists
     os.makedirs(f"dataset/{label}", exist_ok=True)
 
-    # Unique file name
+    # Unique file name for the sample
     filename = f"dataset/{label}/{int(time.time())}.json"
 
-    # Save file
+    # Save the sample file
     with open(filename, "w") as f:
         json.dump(samples, f)
 
-    return jsonify({"status": "success", "file": filename})
+    # ---- Metadata handling ----
+    os.makedirs("metadata", exist_ok=True)
+    metadata_file = "metadata/links.json"
+
+    # Load existing metadata if available
+    if os.path.exists(metadata_file):
+        with open(metadata_file, "r") as f:
+            metadata = json.load(f)
+    else:
+        metadata = {}
+
+    # Only add new label if it does not exist already
+    if label not in metadata:
+        metadata[label] = [link]
+
+        # Save updated metadata (only when new label is added)
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=4)
+
+    return jsonify({
+        "status": "success",
+        "file": filename,
+        "metadata_file": metadata_file
+    })
 
 DATASET_DIR = "dataset"
+METADATA_FILE = "metadata/links.json"
 
 @app.route("/list_words", methods=["GET"])
 def list_words():
-    words = [d for d in os.listdir(DATASET_DIR) if os.path.isdir(os.path.join(DATASET_DIR, d))]
+    if os.path.exists(METADATA_FILE):
+        with open(METADATA_FILE, "r") as f:
+            metadata = json.load(f)
+    else:
+        metadata = {}
+
+    # Return as list of objects: [{ "label": ..., "link": ... }]
+    words = [{"label": label, "link": links[0] if links else None} for label, links in metadata.items()]
+    print("words ", words)
     return jsonify(words)
 
 @app.route("/list_samples/<word>", methods=["GET"])

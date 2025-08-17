@@ -11,7 +11,6 @@ const DatasetBrowser = () => {
   const [loading, setLoading] = useState({ words: false, samples: false, data: false });
   const [error, setError] = useState(null);
 
-  // Fetch words (folders) on initial component mount
   useEffect(() => {
     setLoading(prev => ({ ...prev, words: true }));
     setError(null);
@@ -76,8 +75,8 @@ const DatasetBrowser = () => {
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {words.map((word) => (
             <li
-              key={word}
-              onClick={() => handleWordClick(word)}
+              key={word.label}
+              onClick={() => handleWordClick(word.label)}
               style={{
                 padding: '8px',
                 cursor: 'pointer',
@@ -86,8 +85,14 @@ const DatasetBrowser = () => {
                 color: word === selectedWord ? 'white' : 'black',
               }}
             >
-              {word}
+          <div>{word.label}</div>
+            <small style={{ fontSize: "0.8em", color: "#666" }}>
+              <a href={word.link} target="_blank" rel="noopener noreferrer">
+                {word.link}
+              </a>
+            </small>
             </li>
+            
           ))}
         </ul>
       </div>

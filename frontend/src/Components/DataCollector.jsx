@@ -79,19 +79,54 @@ export default function DataCollector() {
   const lastVideoTimeRef = useRef(-1);
   const rafRef = useRef(null);
   const [label, setLabel] = useState("");
+  const [link, setLink] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState({});
   const isRecordingRef = useRef(false);
+  const [words, setWords] = useState([]);
+
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
+  
   const updateLabel = (newLabel) => {
     setLabel(newLabel);
     console.log("Label should be:", newLabel);
   };
+  
+  useEffect(() => {
+    fetch("http://localhost:5000/list_words")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Fetched words:", data);
+        setWords(data);
+      })
+      .catch((err) => console.error("Failed to fetch words", err));
+  }, []);
 
-  // --- Load MediaPipe Tasks (HandLandmarker) dynamically on mount ---
+
+  const existingWord = words.find(
+    (w) => w.label.toLowerCase() === label.toLowerCase()
+  );
+
+ useEffect(() => {
+    let cleanLabel = label.replace(" (new)", ""); // remove suffix if chosen
+    if (cleanLabel !== label) {
+      setLabel(cleanLabel);
+    }
+
+    const match = words.find(
+      (w) => w.label.toLowerCase() === cleanLabel.toLowerCase()
+    );
+
+    if (match) {
+      setLink(match.link || "");
+    }
+    // don't reset link if it's new
+  }, [label, words]);
+
+
   useEffect(() => {
     let mounted = true;
     let createdHL = null;
@@ -333,7 +368,8 @@ export default function DataCollector() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         label: currentLabel,
-        samples: recordedData[currentLabel] || []
+        samples: recordedData[currentLabel] || [],
+        link: link
       })  
     });
 
@@ -350,9 +386,28 @@ export default function DataCollector() {
       <div className="flex gap-2 items-center mb-3">
         <input
           type="text"
+          list="word-options"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Enter label/word"
+          className="border px-2 py-1 rounded"
+        />
+
+        <datalist id="word-options">
+          {words.map((w) => (
+            <option key={w.label} value={w.label} />
+          ))}
+          {/* If current label isn't already in words, show a "(new)" option */}
+          {label && !words.some((w) => w.label.toLowerCase() === label.toLowerCase()) && (
+            <option value={label + " (new)"} />
+          )}
+        </datalist>
+
+        <input
+          type="text"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="Enter link"
           className="border px-2 py-1 rounded"
         />
         <button
@@ -360,6 +415,19 @@ export default function DataCollector() {
           onClick={startRecording}
           disabled={isRecording}
         >
+        {existingWord && (
+          <div className="ml-2 text-sm text-blue-600">
+            Already exists:{" "}
+            <a
+              href={existingWord.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              {existingWord.link}
+            </a>
+          </div>
+        )}
           Start
         </button>
         <button
