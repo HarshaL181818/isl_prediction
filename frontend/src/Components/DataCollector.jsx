@@ -5,6 +5,7 @@
 // Usage: import DataCollector from './DataCollector'; then use <DataCollector /> in your app
 
 import React, { useEffect, useRef, useState } from 'react';
+import VoiceCommand from "./VoiceCommand"; // adjust path as needed
 
 // Typical MediaPipe hand connections used for drawing lines between landmarks
 const HAND_CONNECTIONS = [
@@ -84,11 +85,15 @@ export default function DataCollector() {
   const [recordedData, setRecordedData] = useState({});
   const isRecordingRef = useRef(false);
   const [words, setWords] = useState([]);
-
+  const [isWebcamReady, setIsWebcamReady] = useState(false);
+  const recognitionRef = useRef(null);
+  const keepListeningRef = useRef(true);
+  const labelRef = useRef(label);
+  const recordedDataRef = useRef({});
 
   useEffect(() => {
-    isRecordingRef.current = isRecording;
-  }, [isRecording]);
+    labelRef.current = label; // keep ref updated
+  }, [label]);
   
   const updateLabel = (newLabel) => {
     setLabel(newLabel);
@@ -208,6 +213,7 @@ export default function DataCollector() {
     if (webcamRunningRef.current) {
       // stop
       webcamRunningRef.current = false;
+      setIsWebcamReady(false);
       if (videoRef.current && videoRef.current.srcObject) {
         const s = videoRef.current.srcObject;
         s.getTracks().forEach((t) => t.stop());
@@ -221,6 +227,7 @@ export default function DataCollector() {
         // ensure video plays
         await videoRef.current.play();
         webcamRunningRef.current = true;
+        setIsWebcamReady(true);
         // start loop
         rafRef.current = requestAnimationFrame(predictWebcam);
       } catch (err) {
@@ -318,17 +325,18 @@ export default function DataCollector() {
 
         // save frame-wise data
         if (isRecordingRef.current) {
-          setRecordedData((prev) => ({
-            [label]: [
-              ...(prev[label] || []),
-              {
-                left: leftHandRef.current,
-                right: rightHandRef.current,
-                pose: poseRef.current,
-                ts: Date.now()
-              }
-            ]
-          }));
+          if (!recordedDataRef.current[labelRef.current]) {
+            recordedDataRef.current[labelRef.current] = [];
+          }
+
+          recordedDataRef.current[labelRef.current].push({
+            left: leftHandRef.current,
+            right: rightHandRef.current,
+            pose: poseRef.current,
+            ts: Date.now()
+          });
+
+
         }
 
 
@@ -343,15 +351,18 @@ export default function DataCollector() {
   };
 
   const startRecording = () => {
-    if (!label.trim()) {
+    if(isRecordingRef.current) return;
+    if (!labelRef.current.trim()) {
       alert("Please enter a label/word first");
       return;
     }
     leftHandRef.current = null;
     rightHandRef.current = null;
     poseRef.current = null;
-    setRecordedData({ [label]: [] }); // clear old data
+    setRecordedData({ [labelRef.current]: [] }); // clear old data
+    isRecordingRef.current = true;
     setIsRecording(true);
+    console.log(isRecording);
   };
 
 
@@ -360,23 +371,82 @@ export default function DataCollector() {
   const poseRef = useRef(null);
 
   const stopRecording = async () => {
+    if(!isRecordingRef.current) return;
+    isRecordingRef.current = false;
     setIsRecording(false);
-    console.log("Recording stopped. Data:", recordedData);
-    const currentLabel = label; 
+    console.log("Recording stopped. Data:", recordedDataRef.current);
+    const currentLabel = labelRef.current; 
     const response = await fetch("http://localhost:5000/save_data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         label: currentLabel,
-        samples: recordedData[currentLabel] || [],
+        samples: recordedDataRef.current[currentLabel] || [],
         link: link
       })  
     });
 
+
     const result = await response.json();
     console.log("Saved:", result);
+    console.log(isRecording);
   };
+  useEffect(()=>{
+    const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn("❌ SpeechRecognition not supported in this browser");
+        return;
+      }
+  
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+      recognition.maxAlternatives = 1;
 
+      recognitionRef.current = recognition;
+  
+      recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript
+          .trim()
+          .toLowerCase();
+        console.log("🎤 Heard:", transcript);
+  
+        if (transcript.includes("start")) {
+          startRecording();
+        } else if (transcript.includes("stop")) {
+          stopRecording();
+        }
+      };
+  
+      recognition.onerror = (e) => {
+        console.error("⚠️ Speech error:", e);
+        if (e.error === "no-speech") {
+          console.log("No speech detected, restarting...");
+          recognition.stop();
+          if (keepListeningRef.current) {
+            setTimeout(() => recognition.start(), 500); // restart after 0.5s
+          }
+        }
+      };
+
+  
+      recognition.onend = () => {
+        console.log("🔄 Recognition ended");
+        if (keepListeningRef.current) {
+          console.log("▶️ Restarting recognition...");
+          recognition.start();
+        }
+      };
+  
+      recognition.start();
+  
+      return () => {
+        keepListeningRef.current = false; // stop restarting on unmount
+        recognition.stop();
+      };
+  },[]);
   return (
     <div ref={containerRef} className="p-4 max-w-4xl mx-auto">
       <h2 className="text-xl font-semibold mb-3">Hand landmark detection (React)</h2>
@@ -437,20 +507,27 @@ export default function DataCollector() {
         >
           Stop
         </button>
-        
+
       </div>
 
       <section>
         <h3 className="font-medium">Demo: Webcam continuous hand landmark detection</h3>
         <p className="text-sm">Click the button and allow webcam access.</p>
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-2">
           <button
             className="px-4 py-2 rounded bg-blue-600 text-white"
             onClick={toggleWebcam}
           >
             {webcamRunningRef.current ? 'Disable Webcam' : 'Enable Webcam'}
           </button>
+
+          {isWebcamReady ? (
+            <span className="text-green-600">🎤 Listening...</span>
+          ) : (
+            <span className="text-gray-500">Waiting for webcam...</span>
+          )}
         </div>
+
 
         <div className="mt-4" style={{ position: 'relative', width: '100%', maxWidth: 960 }}>
           <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%' }} />
