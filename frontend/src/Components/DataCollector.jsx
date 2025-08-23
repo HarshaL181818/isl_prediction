@@ -5,7 +5,6 @@
 // Usage: import DataCollector from './DataCollector'; then use <DataCollector /> in your app
 
 import React, { useEffect, useRef, useState } from 'react';
-import VoiceCommand from "./VoiceCommand"; // adjust path as needed
 
 // Typical MediaPipe hand connections used for drawing lines between landmarks
 const HAND_CONNECTIONS = [
@@ -214,6 +213,8 @@ export default function DataCollector() {
       // stop
       webcamRunningRef.current = false;
       setIsWebcamReady(false);
+      keepListeningRef.current = false;
+      if(recognitionRef.current) recognitionRef.current.stop();
       if (videoRef.current && videoRef.current.srcObject) {
         const s = videoRef.current.srcObject;
         s.getTracks().forEach((t) => t.stop());
@@ -230,6 +231,12 @@ export default function DataCollector() {
         setIsWebcamReady(true);
         // start loop
         rafRef.current = requestAnimationFrame(predictWebcam);
+
+        if(recognitionRef.current){
+          keepListeningRef.current = true;
+          recognitionRef.current.start();
+          console.log("Voice command enabled");
+        }
       } catch (err) {
         console.error('Could not start webcam', err);
       }
@@ -351,19 +358,25 @@ export default function DataCollector() {
   };
 
   const startRecording = () => {
-    if(isRecordingRef.current) return;
+    if (isRecordingRef.current) return;
     if (!labelRef.current.trim()) {
       alert("Please enter a label/word first");
       return;
     }
+
     leftHandRef.current = null;
     rightHandRef.current = null;
     poseRef.current = null;
-    setRecordedData({ [labelRef.current]: [] }); // clear old data
+
+    // ✅ Clear old frames for this new recording
+    recordedDataRef.current = { [labelRef.current]: [] };
+
+    setRecordedData({ [labelRef.current]: [] });
     isRecordingRef.current = true;
     setIsRecording(true);
-    console.log(isRecording);
+    console.log("Recording started for:", labelRef.current);
   };
+
 
 
   const leftHandRef = useRef(null);
@@ -391,62 +404,60 @@ export default function DataCollector() {
     console.log("Saved:", result);
     console.log(isRecording);
   };
-  useEffect(()=>{
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        console.warn("❌ SpeechRecognition not supported in this browser");
-        return;
+  useEffect(() => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn("❌ SpeechRecognition not supported in this browser");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = "en-US";
+  recognition.maxAlternatives = 1;
+
+  recognitionRef.current = recognition;
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript
+      .trim()
+      .toLowerCase();
+    console.log("🎤 Heard:", transcript);
+
+    if (transcript.includes("start")) {
+      startRecording();
+    } else if (transcript.includes("stop")) {
+      stopRecording();
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.error("⚠️ Speech error:", e);
+    if (e.error === "no-speech") {
+      console.log("No speech detected, restarting...");
+      recognition.stop();
+      if (keepListeningRef.current) {
+        setTimeout(() => recognition.start(), 500);
       }
-  
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
-      recognition.maxAlternatives = 1;
+    }
+  };
 
-      recognitionRef.current = recognition;
-  
-      recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript
-          .trim()
-          .toLowerCase();
-        console.log("🎤 Heard:", transcript);
-  
-        if (transcript.includes("start")) {
-          startRecording();
-        } else if (transcript.includes("stop")) {
-          stopRecording();
-        }
-      };
-  
-      recognition.onerror = (e) => {
-        console.error("⚠️ Speech error:", e);
-        if (e.error === "no-speech") {
-          console.log("No speech detected, restarting...");
-          recognition.stop();
-          if (keepListeningRef.current) {
-            setTimeout(() => recognition.start(), 500); // restart after 0.5s
-          }
-        }
-      };
-
-  
-      recognition.onend = () => {
-        console.log("🔄 Recognition ended");
-        if (keepListeningRef.current) {
-          console.log("▶️ Restarting recognition...");
-          recognition.start();
-        }
-      };
-  
+  recognition.onend = () => {
+    console.log("🔄 Recognition ended");
+    if (keepListeningRef.current) {
+      console.log("▶️ Restarting recognition...");
       recognition.start();
-  
-      return () => {
-        keepListeningRef.current = false; // stop restarting on unmount
-        recognition.stop();
-      };
-  },[]);
+    }
+  };
+
+  return () => {
+    keepListeningRef.current = false;
+    recognition.stop();
+  };
+}, []);
+
   return (
     <div ref={containerRef} className="p-4 max-w-4xl mx-auto">
       <h2 className="text-xl font-semibold mb-3">Hand landmark detection (React)</h2>
