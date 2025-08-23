@@ -89,6 +89,7 @@ export default function DataCollector() {
   const keepListeningRef = useRef(true);
   const labelRef = useRef(label);
   const recordedDataRef = useRef({});
+  const recognitionActiveRef = useRef(false);
 
   useEffect(() => {
     labelRef.current = label; // keep ref updated
@@ -214,7 +215,19 @@ export default function DataCollector() {
       webcamRunningRef.current = false;
       setIsWebcamReady(false);
       keepListeningRef.current = false;
-      if(recognitionRef.current) recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        if (recognitionActiveRef.current) {
+          recognitionRef.current.stop();
+          recognitionActiveRef.current = false;
+        }
+        recognitionRef.current.start();
+        recognitionActiveRef.current = true;
+        keepListeningRef.current = true;
+        console.log("🎤 Voice commands enabled");
+      }
+
+
+
       if (videoRef.current && videoRef.current.srcObject) {
         const s = videoRef.current.srcObject;
         s.getTracks().forEach((t) => t.stop());
@@ -232,11 +245,26 @@ export default function DataCollector() {
         // start loop
         rafRef.current = requestAnimationFrame(predictWebcam);
 
-        if(recognitionRef.current){
-          keepListeningRef.current = true;
-          recognitionRef.current.start();
-          console.log("Voice command enabled");
+        if (recognitionRef.current) {
+          if (recognitionActiveRef.current) {
+            try {
+              recognitionRef.current.stop();
+              recognitionActiveRef.current = false; // reset immediately
+            } catch (err) {
+              console.warn("Recognition stop error:", err);
+            }
+          }
+          try {
+            recognitionRef.current.start();
+            recognitionActiveRef.current = true;
+            keepListeningRef.current = true;
+            console.log("🎤 Voice commands enabled");
+          } catch (err) {
+            console.error("Recognition start error:", err);
+          }
         }
+
+
       } catch (err) {
         console.error('Could not start webcam', err);
       }
@@ -446,11 +474,14 @@ export default function DataCollector() {
 
   recognition.onend = () => {
     console.log("🔄 Recognition ended");
+    recognitionActiveRef.current = false; // ✅ reset when ended
     if (keepListeningRef.current) {
       console.log("▶️ Restarting recognition...");
-      recognition.start();
+      recognitionRef.current.start();
+      recognitionActiveRef.current = true;
     }
   };
+
 
   return () => {
     keepListeningRef.current = false;
