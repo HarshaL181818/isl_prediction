@@ -220,10 +220,7 @@ export default function DataCollector() {
           recognitionRef.current.stop();
           recognitionActiveRef.current = false;
         }
-        recognitionRef.current.start();
-        recognitionActiveRef.current = true;
-        keepListeningRef.current = true;
-        console.log("🎤 Voice commands enabled");
+        
       }
 
 
