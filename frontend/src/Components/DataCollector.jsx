@@ -1,8 +1,5 @@
 // DataCollector.jsx
 // React component that reproduces the MediaPipe HandLandmarker demo (image click detection + webcam continuous detection)
-// - No external npm packages required (uses dynamic import of MediaPipe Tasks from CDN)
-// - Drop this file in your React app (must run in a modern browser that allows dynamic ESM imports from CDN)
-// Usage: import DataCollector from './DataCollector'; then use <DataCollector /> in your app
 
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -66,7 +63,6 @@ function drawLandmarks(ctx, landmarks, opts = {}) {
   ctx.restore();
 }
 
-
 export default function DataCollector() {
   const videoRef = useRef(null);
   let leftHand = null, rightHand = null, pose = null;
@@ -86,10 +82,8 @@ export default function DataCollector() {
   const [words, setWords] = useState([]);
   const [isWebcamReady, setIsWebcamReady] = useState(false);
   const recognitionRef = useRef(null);
-  const keepListeningRef = useRef(true);
   const labelRef = useRef(label);
   const recordedDataRef = useRef({});
-  const recognitionActiveRef = useRef(false);
 
   useEffect(() => {
     labelRef.current = label; // keep ref updated
@@ -110,13 +104,12 @@ export default function DataCollector() {
       .catch((err) => console.error("Failed to fetch words", err));
   }, []);
 
-
   const existingWord = words.find(
     (w) => w.label.toLowerCase() === label.toLowerCase()
   );
 
- useEffect(() => {
-    let cleanLabel = label.replace(" (new)", ""); // remove suffix if chosen
+  useEffect(() => {
+    let cleanLabel = label.replace(" (new)", "");
     if (cleanLabel !== label) {
       setLabel(cleanLabel);
     }
@@ -128,9 +121,7 @@ export default function DataCollector() {
     if (match) {
       setLink(match.link || "");
     }
-    // don't reset link if it's new
   }, [label, words]);
-
 
   useEffect(() => {
     let mounted = true;
@@ -139,21 +130,17 @@ export default function DataCollector() {
 
     (async () => {
       try {
-        // dynamic import from CDN
         const mp = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0');
         const { FilesetResolver, HandLandmarker, PoseLandmarker } = mp;
 
-        // load wasm files for the tasks
         const vision = await FilesetResolver.forVisionTasks(
           'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
         );
 
         createdHL = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
-            // model hosted by MediaPipe
             modelAssetPath:
               'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-            // if GPU fails for you, replace with 'CPU'
             delegate: 'GPU'
           },
           runningMode: runningModeRef.current,
@@ -169,37 +156,29 @@ export default function DataCollector() {
         });
 
         if (!mounted) {
-          if (createdHL && createdHL.close) 
-            createdHL.close();
-          if (createdPL && createdPL.close) 
-            createdPL.close();
+          if (createdHL?.close) createdHL.close();
+          if (createdPL?.close) createdPL.close();
           return;
         }
 
         setHandLandmarker(createdHL);
-        console.info('HandLandmarker ready');
         setPoseLandmarker(createdPL);
-        console.info('PoseLandmarker ready')
-        // Reveal that the model is ready in console
-        
+        console.info('Models ready');
       } catch (err) {
-        console.error('Failed to load MediaPipe HandLandmarker', err);
+        console.error('Failed to load MediaPipe', err);
       }
     })();
 
     return () => {
       mounted = false;
-      // stop webcam if running
       webcamRunningRef.current = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (videoRef.current && videoRef.current.srcObject) {
-        const s = videoRef.current.srcObject;
-        s.getTracks().forEach((t) => t.stop());
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
         videoRef.current.srcObject = null;
       }
-      if (createdHL && createdHL.close) createdHL.close();
-      if (createdPL && createdPL.close) 
-            createdPL.close();
+      if (createdHL?.close) createdHL.close();
+      if (createdPL?.close) createdPL.close();
     };
   }, []);
 
@@ -211,23 +190,18 @@ export default function DataCollector() {
     }
 
     if (webcamRunningRef.current) {
-      // stop
+      // === STOP ===
       webcamRunningRef.current = false;
       setIsWebcamReady(false);
-      keepListeningRef.current = false;
-      if (recognitionRef.current) {
-        if (recognitionActiveRef.current) {
-          recognitionRef.current.stop();
-          recognitionActiveRef.current = false;
-        }
-        
+
+      try {
+        recognitionRef.current?.stop();
+      } catch (err) {
+        console.warn("Recognition stop error:", err);
       }
 
-
-
-      if (videoRef.current && videoRef.current.srcObject) {
-        const s = videoRef.current.srcObject;
-        s.getTracks().forEach((t) => t.stop());
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
         videoRef.current.srcObject = null;
       }
     } else {
@@ -235,33 +209,19 @@ export default function DataCollector() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (!videoRef.current) return;
         videoRef.current.srcObject = stream;
-        // ensure video plays
         await videoRef.current.play();
+
         webcamRunningRef.current = true;
         setIsWebcamReady(true);
-        // start loop
+
         rafRef.current = requestAnimationFrame(predictWebcam);
 
-        if (recognitionRef.current) {
-          if (recognitionActiveRef.current) {
-            try {
-              recognitionRef.current.stop();
-              recognitionActiveRef.current = false; // reset immediately
-            } catch (err) {
-              console.warn("Recognition stop error:", err);
-            }
-          }
-          try {
-            recognitionRef.current.start();
-            recognitionActiveRef.current = true;
-            keepListeningRef.current = true;
-            console.log("🎤 Voice commands enabled");
-          } catch (err) {
-            console.error("Recognition start error:", err);
-          }
+        try {
+          recognitionRef.current?.start();
+          console.log("🎤 Voice commands enabled");
+        } catch (err) {
+          console.error("Recognition start error:", err);
         }
-
-
       } catch (err) {
         console.error('Could not start webcam', err);
       }
@@ -280,7 +240,6 @@ export default function DataCollector() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    // match size
     if (video.videoWidth && video.videoHeight) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -299,48 +258,39 @@ export default function DataCollector() {
 
       if (lastVideoTimeRef.current !== video.currentTime) {
         lastVideoTimeRef.current = video.currentTime;
-        // detectForVideo may be synchronous in some builds but awaiting is safe
         const [handRes, poseRes] = await Promise.all([
           handLandmarker.detectForVideo(video, startTimeMs),
           poseLandmarker.detectForVideo(video, startTimeMs)
         ]);
-        // draw
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        if (handRes && handRes.landmarks) {
-          for(let i = 0 ; i < handRes.handednesses.length ; i++)
-          {
-              const category = handRes.handednesses[i];
-              if(category[0].categoryName === "Left")
-                {
-                    leftHand = handRes.landmarks[i];
-                    drawConnectors(ctx, handRes.landmarks[i], HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
-                    drawLandmarks(ctx, handRes.landmarks[i], { color: '#FF0000', radius: 3 });
-                   
-                }
-                else if(category[0].categoryName === "Right")
-                {
-                    rightHand = handRes.landmarks[i];
-                    drawConnectors(ctx, handRes.landmarks[i], HAND_CONNECTIONS, { color: '#6600ffff', lineWidth: 5 });
-                    drawLandmarks(ctx, handRes.landmarks[i], { color: '#0a0a0aff', radius: 3 });
-                    
-                }
-            
+
+        if (handRes?.landmarks) {
+          for (let i = 0; i < handRes.handednesses.length; i++) {
+            const category = handRes.handednesses[i];
+            if (category[0].categoryName === "Left") {
+              leftHand = handRes.landmarks[i];
+              drawConnectors(ctx, leftHand, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+              drawLandmarks(ctx, leftHand, { color: '#FF0000', radius: 3 });
+            } else if (category[0].categoryName === "Right") {
+              rightHand = handRes.landmarks[i];
+              drawConnectors(ctx, rightHand, HAND_CONNECTIONS, { color: '#6600ff', lineWidth: 5 });
+              drawLandmarks(ctx, rightHand, { color: '#0a0a0a', radius: 3 });
+            }
           }
         }
 
-        if (poseRes && poseRes.landmarks) {
-            pose = poseRes.landmarks[0];
-            drawConnectors(ctx, pose, POSE_CONNECTIONS, { color: '#00FFFF', lineWidth: 2 });
-            drawLandmarks(ctx, pose, { color: '#FF00FF', radius: 3 });
+        if (poseRes?.landmarks) {
+          pose = poseRes.landmarks[0];
+          drawConnectors(ctx, pose, POSE_CONNECTIONS, { color: '#00FFFF', lineWidth: 2 });
+          drawLandmarks(ctx, pose, { color: '#FF00FF', radius: 3 });
         }
-        
-       // inside predictWebcam after detection
+
         leftHandRef.current = null;
         rightHandRef.current = null;
         poseRef.current = null;
 
-        if (handRes && handRes.landmarks) {
+        if (handRes?.landmarks) {
           for (let i = 0; i < handRes.handednesses.length; i++) {
             const category = handRes.handednesses[i];
             if (category[0].categoryName === "Left") {
@@ -351,34 +301,26 @@ export default function DataCollector() {
           }
         }
 
-        if (poseRes && poseRes.landmarks) {
+        if (poseRes?.landmarks) {
           poseRef.current = poseRes.landmarks[0];
         }
 
-        // save frame-wise data
         if (isRecordingRef.current) {
           if (!recordedDataRef.current[labelRef.current]) {
             recordedDataRef.current[labelRef.current] = [];
           }
-
           recordedDataRef.current[labelRef.current].push({
             left: leftHandRef.current,
             right: rightHandRef.current,
             pose: poseRef.current,
             ts: Date.now()
           });
-
-
         }
-
-
-
       }
     } catch (err) {
       console.error('Error during webcam prediction', err);
     }
 
-    // continue loop
     rafRef.current = requestAnimationFrame(predictWebcam);
   };
 
@@ -393,27 +335,23 @@ export default function DataCollector() {
     rightHandRef.current = null;
     poseRef.current = null;
 
-    // ✅ Clear old frames for this new recording
     recordedDataRef.current = { [labelRef.current]: [] };
-
     setRecordedData({ [labelRef.current]: [] });
     isRecordingRef.current = true;
     setIsRecording(true);
     console.log("Recording started for:", labelRef.current);
   };
 
-
-
   const leftHandRef = useRef(null);
   const rightHandRef = useRef(null);
   const poseRef = useRef(null);
 
   const stopRecording = async () => {
-    if(!isRecordingRef.current) return;
+    if (!isRecordingRef.current) return;
     isRecordingRef.current = false;
     setIsRecording(false);
     console.log("Recording stopped. Data:", recordedDataRef.current);
-    const currentLabel = labelRef.current; 
+    const currentLabel = labelRef.current;
     const response = await fetch("http://localhost:5000/save_data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -421,76 +359,67 @@ export default function DataCollector() {
         label: currentLabel,
         samples: recordedDataRef.current[currentLabel] || [],
         link: link
-      })  
+      })
     });
-
 
     const result = await response.json();
     console.log("Saved:", result);
-    console.log(isRecording);
   };
+
+  // --- Voice Recognition ---
   useEffect(() => {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn("❌ SpeechRecognition not supported in this browser");
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = "en-US";
-  recognition.maxAlternatives = 1;
-
-  recognitionRef.current = recognition;
-
-  recognition.onresult = (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript
-      .trim()
-      .toLowerCase();
-    console.log("🎤 Heard:", transcript);
-
-    if (transcript.includes("start")) {
-      startRecording();
-    } else if (transcript.includes("stop")) {
-      stopRecording();
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("❌ SpeechRecognition not supported in this browser");
+      return;
     }
-  };
 
-  recognition.onerror = (e) => {
-    console.error("⚠️ Speech error:", e);
-    if (e.error === "no-speech") {
-      console.log("No speech detected, restarting...");
-      recognition.stop();
-      if (keepListeningRef.current) {
-        setTimeout(() => recognition.start(), 500);
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript
+        .trim()
+        .toLowerCase();
+      console.log("🎤 Heard:", transcript);
+
+      if (transcript.includes("start")) {
+        startRecording();
+      } else if (transcript.includes("stop")) {
+        stopRecording();
       }
-    }
-  };
+    };
 
-  recognition.onend = () => {
-    console.log("🔄 Recognition ended");
-    recognitionActiveRef.current = false; // ✅ reset when ended
-    if (keepListeningRef.current) {
-      console.log("▶️ Restarting recognition...");
-      recognitionRef.current.start();
-      recognitionActiveRef.current = true;
-    }
-  };
+    recognition.onerror = (e) => {
+      console.error("⚠️ Speech error:", e);
+    };
 
+    recognition.onend = () => {
+      if (webcamRunningRef.current) {
+        try {
+          recognition.start();
+        } catch (err) {
+          console.warn("⚠️ Recognition restart failed:", err);
+        }
+      }
+    };
 
-  return () => {
-    keepListeningRef.current = false;
-    recognition.stop();
-  };
-}, []);
+    return () => {
+      try {
+        recognition.stop();
+      } catch {}
+    };
+  }, []);
 
   return (
     <div ref={containerRef} className="p-4 max-w-4xl mx-auto">
       <h2 className="text-xl font-semibold mb-3">Hand landmark detection (React)</h2>
 
-      
       {/* Input + recording controls */}
       <div className="flex gap-2 items-center mb-3">
         <input
@@ -506,7 +435,6 @@ export default function DataCollector() {
           {words.map((w) => (
             <option key={w.label} value={w.label} />
           ))}
-          {/* If current label isn't already in words, show a "(new)" option */}
           {label && !words.some((w) => w.label.toLowerCase() === label.toLowerCase()) && (
             <option value={label + " (new)"} />
           )}
@@ -524,6 +452,16 @@ export default function DataCollector() {
           onClick={startRecording}
           disabled={isRecording}
         >
+          Start
+        </button>
+        <button
+          className="px-4 py-2 rounded bg-red-600 text-white"
+          onClick={stopRecording}
+          disabled={!isRecording}
+        >
+          Stop
+        </button>
+
         {existingWord && (
           <div className="ml-2 text-sm text-blue-600">
             Already exists:{" "}
@@ -537,16 +475,6 @@ export default function DataCollector() {
             </a>
           </div>
         )}
-          Start
-        </button>
-        <button
-          className="px-4 py-2 rounded bg-red-600 text-white"
-          onClick={stopRecording}
-          disabled={!isRecording}
-        >
-          Stop
-        </button>
-
       </div>
 
       <section>
@@ -567,13 +495,11 @@ export default function DataCollector() {
           )}
         </div>
 
-
         <div className="mt-4" style={{ position: 'relative', width: '100%', maxWidth: 960 }}>
           <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%' }} />
           <canvas ref={canvasRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} />
         </div>
       </section>
-
     </div>
   );
 }
