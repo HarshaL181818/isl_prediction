@@ -1,0 +1,243 @@
+/* Components/LivePredictor.css */
+
+.live-predictor-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: "Inter", sans-serif;
+  color: #333;
+  background-color: #fafafa;
+  min-height: 100vh;
+}
+
+/* Page title */
+.page-title {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 700;
+  color: #1976d2;
+}
+
+/* Layout for video + prediction side by side */
+.video-prediction-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .video-prediction-container {
+    flex-direction: row;
+  }
+}
+
+/* Video container */
+.video-container {
+  flex: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background-color: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.video-feed,
+.overlay-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+}
+
+.overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* Timer overlay */
+.countdown-timer {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Controls */
+.controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+.control-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.start-button {
+  background-color: #4caf50;
+  color: #fff;
+}
+
+.start-button:hover {
+  background-color: #45a049;
+}
+
+.stop-button {
+  background-color: #f44336;
+  color: #fff;
+}
+
+.stop-button:hover {
+  background-color: #d32f2f;
+}
+
+/* Prediction display */
+.prediction-display {
+  flex: 1;
+  padding: 2rem;
+  border-radius: 12px;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.prediction-display h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.prediction-result {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2196f3;
+  margin: 1rem 0;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  background-color: #e3f2fd;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.2);
+}
+
+.no-prediction {
+  font-size: 1.2rem;
+  color: #757575;
+  font-style: italic;
+}
+
+.loading {
+  font-size: 1.2rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Error message */
+.error-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #ffebee;
+  color: #d32f2f;
+  border-left: 4px solid #d32f2f;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Prediction history */
+.prediction-history {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.prediction-history h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.prediction-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.prediction-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.prediction-item:last-child {
+  border-bottom: none;
+}
+
+.prediction-time {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.prediction-text {
+  font-weight: 600;
+  color: #2196f3;
+}
+
+.no-history {
+  text-align: center;
+  color: #757575;
+  font-style: italic;
+  padding: 1rem;
+}
+.instructions {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+    background-color: #f0f0f0;
+  }
+  
+  .instructions h3 {
+    margin-bottom: 1rem;
+    color: #333;
+  }
+  
+  .instructions ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .instructions li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .instructions .note {
+    font-style: italic;
+    color: #666;
+    font-size: 0.9rem;
+  }

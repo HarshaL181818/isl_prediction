@@ -11,7 +11,9 @@ import './App.css';
 import DataCollector from './Components/DataCollector';
 import VideoStream from './Components/VideoStream';
 import DatasetBrowser from './Components/DatasetBrowser';
-
+import AddLabel from './Components/AddLabel';
+import TrainingProgress from './Components/TrainingProgress';
+import RealtimePredictor from './Components/RealtimePredictor';
 function App() {
   return (
     <Router>
@@ -21,11 +23,14 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/live-prediction" element={<LivePredictor />} />
+            <Route path='/live' element={<RealtimePredictor />} />
             <Route path="/dataset" element={<DatasetViewer />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/collect" element={<DataCollector />} />
             <Route path="/stream" element={<VideoStream />} />
             <Route path="/view" element={<DatasetBrowser />} />
+            <Route path='/add' element={<AddLabel/>}/>
+            <Route path='/training' element={<TrainingProgress/>}/>
           </Routes>
         </main>
         <Footer />

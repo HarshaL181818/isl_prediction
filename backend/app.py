@@ -16,6 +16,9 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
+from flask_socketio import SocketIO
+
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'backend/uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -33,234 +36,146 @@ if gpus:
 else:
     print("⚠ No GPU found. Running on CPU.")
 
-MODEL_PATH = 'backend/model/isl_bilstm_model_v2.h5'
-ENCODER_PATH = 'backend/model/label_encoder_v2.pkl'
-MAX_FRAMES = 117
-FEATURE_DIM = 225
-
-model = load_model(MODEL_PATH)
-with open(ENCODER_PATH, 'rb') as f:
-    label_encoder = pickle.load(f)
 
 
-@app.route('/predict-sign', methods=['POST'])
-def predict_sign():
-    if 'video' not in request.files:
-        return jsonify({'error': 'No video uploaded'}), 400
 
-    video = request.files['video']
-    filename = secure_filename(video.filename)
-    video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    video.save(video_path)
+# @app.route('/predict-sign', methods=['POST'])
+# def predict_sign():
+#     if 'video' not in request.files:
+#         return jsonify({'error': 'No video uploaded'}), 400
 
-    sequence = extract_sequence_from_video(video_path, max_frames=MAX_FRAMES)
+#     video = request.files['video']
+#     filename = secure_filename(video.filename)
+#     video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+#     video.save(video_path)
 
-    if sequence.size == 0:
-        sequence = np.zeros((MAX_FRAMES, FEATURE_DIM))
-    elif sequence.shape[0] < MAX_FRAMES:
-        pad_len = MAX_FRAMES - sequence.shape[0]
-        sequence = np.vstack((sequence, np.zeros((pad_len, FEATURE_DIM))))
-    else:
-        sequence = sequence[:MAX_FRAMES]
+#     sequence = extract_sequence_from_video(video_path, max_frames=MAX_FRAMES)
 
-    sequence = np.expand_dims(sequence, axis=0)
-    prediction = model.predict(sequence)
-    predicted_label = label_encoder.inverse_transform([np.argmax(prediction)])[0]
+#     if sequence.size == 0:
+#         sequence = np.zeros((MAX_FRAMES, FEATURE_DIM))
+#     elif sequence.shape[0] < MAX_FRAMES:
+#         pad_len = MAX_FRAMES - sequence.shape[0]
+#         sequence = np.vstack((sequence, np.zeros((pad_len, FEATURE_DIM))))
+#     else:
+#         sequence = sequence[:MAX_FRAMES]
 
-    return jsonify({'label': predicted_label})
+#     sequence = np.expand_dims(sequence, axis=0)
+#     prediction = model.predict(sequence)
+#     predicted_label = label_encoder.inverse_transform([np.argmax(prediction)])[0]
 
-@app.route('/get-dataset-videos')
-def get_dataset_videos():
-    dataset_dir = 'backend/isl_datav2'
-    dataset = {}
+#     return jsonify({'label': predicted_label})
 
-    for label in os.listdir(dataset_dir):
-        label_path = os.path.join(dataset_dir, label)
-        if os.path.isdir(label_path):
-            videos = os.listdir(label_path)
-            dataset[label] = [f"data/{label}/{vid}" for vid in videos if vid.lower().endswith(('.mp4', '.mov'))]
+# @app.route('/get-dataset-videos')
+# def get_dataset_videos():
+#     dataset_dir = 'backend/isl_datav2'
+#     dataset = {}
 
-    return jsonify(dataset)
+#     for label in os.listdir(dataset_dir):
+#         label_path = os.path.join(dataset_dir, label)
+#         if os.path.isdir(label_path):
+#             videos = os.listdir(label_path)
+#             dataset[label] = [f"data/{label}/{vid}" for vid in videos if vid.lower().endswith(('.mp4', '.mov'))]
 
-@app.route('/predict-live', methods=['POST'])
-def predict_live():
-    print("Received files:", request.files)
-    print("Received form data:", request.form)
+#     return jsonify(dataset)
 
-    if 'video' not in request.files:
-        return jsonify({'error': 'No video uploaded'}), 400
+# @app.route('/predict-live', methods=['POST'])
+# def predict_live():
+#     print("Received files:", request.files)
+#     print("Received form data:", request.form)
 
-    video = request.files['video']
-    from datetime import datetime
-    filename = datetime.now().strftime("%Y%m%d%H%M%S_") + secure_filename(video.filename)
+#     if 'video' not in request.files:
+#         return jsonify({'error': 'No video uploaded'}), 400
 
-    video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    video.save(video_path)
+#     video = request.files['video']
+#     from datetime import datetime
+#     filename = datetime.now().strftime("%Y%m%d%H%M%S_") + secure_filename(video.filename)
+
+#     video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+#     video.save(video_path)
     
-    # Log video information
-    cap = cv2.VideoCapture(video_path)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    duration = frame_count / fps if fps > 0 else 0
+#     # Log video information
+#     cap = cv2.VideoCapture(video_path)
+#     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+#     fps = cap.get(cv2.CAP_PROP_FPS)
+#     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+#     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+#     duration = frame_count / fps if fps > 0 else 0
     
-    print(f"Video info - Filename: {filename}")
-    print(f"Video info - Resolution: {width}x{height}")
-    print(f"Video info - Frame count: {frame_count}")
-    print(f"Video info - FPS: {fps:.2f}")
-    print(f"Video info - Duration: {duration:.2f} seconds")
-    cap.release()
+#     print(f"Video info - Filename: {filename}")
+#     print(f"Video info - Resolution: {width}x{height}")
+#     print(f"Video info - Frame count: {frame_count}")
+#     print(f"Video info - FPS: {fps:.2f}")
+#     print(f"Video info - Duration: {duration:.2f} seconds")
+#     cap.release()
 
-    # Extract keypoints from the saved video
-    sequence = extract_sequence_from_video(video_path, max_frames=110)
+#     # Extract keypoints from the saved video
+#     sequence = extract_sequence_from_video(video_path, max_frames=110)
     
-    # Log sequence information
-    print(f"Extracted sequence length: {sequence.shape[0]} frames")
-    print(f"Features per frame: {sequence.shape[1] if sequence.size > 0 else FEATURE_DIM}")
+#     # Log sequence information
+#     print(f"Extracted sequence length: {sequence.shape[0]} frames")
+#     print(f"Features per frame: {sequence.shape[1] if sequence.size > 0 else FEATURE_DIM}")
 
-    if sequence.size == 0:
-        print("Warning: No frames extracted, using zero sequence")
-        sequence = np.zeros((MAX_FRAMES, FEATURE_DIM))
-    elif sequence.shape[0] < MAX_FRAMES:
-        pad_len = MAX_FRAMES - sequence.shape[0]
-        print(f"Padding sequence with {pad_len} zero frames")
-        sequence = np.vstack((sequence, np.zeros((pad_len, FEATURE_DIM))))
-    else:
-        print(f"Truncating sequence to {MAX_FRAMES} frames")
-        sequence = sequence[:MAX_FRAMES]
+#     if sequence.size == 0:
+#         print("Warning: No frames extracted, using zero sequence")
+#         sequence = np.zeros((MAX_FRAMES, FEATURE_DIM))
+#     elif sequence.shape[0] < MAX_FRAMES:
+#         pad_len = MAX_FRAMES - sequence.shape[0]
+#         print(f"Padding sequence with {pad_len} zero frames")
+#         sequence = np.vstack((sequence, np.zeros((pad_len, FEATURE_DIM))))
+#     else:
+#         print(f"Truncating sequence to {MAX_FRAMES} frames")
+#         sequence = sequence[:MAX_FRAMES]
 
-    sequence = np.expand_dims(sequence, axis=0)
-    prediction = model.predict(sequence)
-    predicted_label = label_encoder.inverse_transform([np.argmax(prediction)])[0]
-    confidence = float(np.max(prediction))
+#     sequence = np.expand_dims(sequence, axis=0)
+#     prediction = model.predict(sequence)
+#     predicted_label = label_encoder.inverse_transform([np.argmax(prediction)])[0]
+#     confidence = float(np.max(prediction))
     
-    print(f"Prediction result: {predicted_label} (confidence: {confidence:.4f})")
+#     print(f"Prediction result: {predicted_label} (confidence: {confidence:.4f})")
 
-    return jsonify({'predicted_label': predicted_label, 'confidence': confidence})
+#     return jsonify({'predicted_label': predicted_label, 'confidence': confidence})
 
+# @app.route('/data/<label>/<video>')
+# def serve_video(label, video):
+#     return send_from_directory(os.path.join('isl_datav2', label), video)
 
+# @app.route('/generate_context', methods=['POST'])
+# def generate_context():
+#     words = request.form.get('words') 
+#     print(words)
+#     sentence = SentenceGeneratorAgent()
+#     results = sentence.generate(words)
 
-@app.route('/predict-frames', methods=['POST'])
-def predict_frames():
-    """
-    Process frames sent directly from the frontend and make a prediction.
-    Expects a multipart/form-data request with:
-    - Multiple 'frame_X' files (JPEG images)
-    - 'frame_count' field indicating total number of frames
-    """
-    import time
-    request_id = int(time.time() * 1000)  # Generate unique ID for tracking this request
-    print(f"[{request_id}] Received frame prediction request")
-    
-    try:
-        # Get frame count
-        frame_count = int(request.form.get('frame_count', '0'))
-        if frame_count == 0:
-            return jsonify({'error': 'No frames provided'}), 400
-        
-        print(f"[{request_id}] Processing {frame_count} frames")
-        
-        # Get all frames
-        frames = []
-        for i in range(frame_count):
-            frame_key = f'frame_{i}'
-            if frame_key in request.files:
-                file = request.files[frame_key]
-                # Convert file to numpy array
-                nparr = np.frombuffer(file.read(), np.uint8)
-                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                if img is not None:
-                    frames.append(img)
-        
-        if not frames:
-            return jsonify({'error': 'Could not decode any frames'}), 400
-            
-        print(f"[{request_id}] Successfully decoded {len(frames)} frames")
-        
-        # Process the frames through MediaPipe to extract landmarks
-        sequence = extract_landmarks_from_frames(frames, max_frames=MAX_FRAMES)
-        
-        # Log extracted sequence information
-        print(f"[{request_id}] Extracted sequence shape: {sequence.shape if sequence.size > 0 else '(0, 0)'}")
-        
-        # Make prediction
-        if sequence.size == 0:
-            print(f"[{request_id}] Warning: No landmarks extracted, using zero sequence")
-            sequence = np.zeros((MAX_FRAMES, FEATURE_DIM))
-        elif sequence.shape[0] < MAX_FRAMES:
-            pad_len = MAX_FRAMES - sequence.shape[0]
-            print(f"[{request_id}] Padding sequence with {pad_len} zero frames")
-            sequence = np.vstack((sequence, np.zeros((pad_len, FEATURE_DIM))))
-        else:
-            print(f"[{request_id}] Using first {MAX_FRAMES} frames of sequence")
-            sequence = sequence[:MAX_FRAMES]
-        
-        # Ensure sequence is properly shaped for model input
-        sequence = np.expand_dims(sequence, axis=0)
-        
-        # Run prediction
-        print(f"[{request_id}] Running model prediction...")
-        prediction_start = time.time()
-        prediction = model.predict(sequence, verbose=0)  # Set verbose=0 to reduce console output
-        prediction_time = time.time() - prediction_start
-        
-        import re
+#     import tensorflow as tf
+#     print("GPUs detected:", tf.config.list_physical_devices('GPU'))
 
-        predicted_index = np.argmax(prediction)
-        predicted_label = label_encoder.inverse_transform([predicted_index])[0]
-        # Replace 'paper' or 'Paper' with 'Letter'
-        predicted_label = re.sub(r'(?i)paper', 'Letter', predicted_label)
-        # Remove digits from the label
-        predicted_label = re.sub(r'\d+', '', predicted_label)
-        confidence = float(np.max(prediction))
+#     return {'generated_sentence': results}
 
-        
-        print(f"[{request_id}] Prediction completed in {prediction_time:.2f}s: {predicted_label} (confidence: {confidence:.4f})")
-        
-        # Return the prediction result
-        return jsonify({
-            'predicted_label': predicted_label,
-            'confidence': confidence,
-            'request_id': request_id
-        })
-        
-    except Exception as e:
-        import traceback
-        print(f"[{request_id}] Error processing frames: {str(e)}")
-        traceback.print_exc()
-        return jsonify({'error': f'Error processing frames: {str(e)}'}), 500
-
-
-
-@app.route('/data/<label>/<video>')
-def serve_video(label, video):
-    return send_from_directory(os.path.join('isl_datav2', label), video)
-
-@app.route('/generate_context', methods=['POST'])
-def generate_context():
-    words = request.form.get('words') 
-    print(words)
-    sentence = SentenceGeneratorAgent()
-    results = sentence.generate(words)
-
-    import tensorflow as tf
-    print("GPUs detected:", tf.config.list_physical_devices('GPU'))
-
-    return {'generated_sentence': results}
-
-from flask import Flask
-from flask_socketio import SocketIO, emit
-import os
-import time
-import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
-
+import os
+import pickle
+import numpy as np
+from tensorflow.keras.models import load_model
+from collections import deque
+import json
 app = Flask(__name__)
-CORS(app) 
-socketio = SocketIO(app, cors_allowed_origins="*")
+CORS(app)
+
+# -------------------
+# Config
+# -------------------
+MODEL_PATH = 'backend/model/sign_model_v6.h5'
+ENCODER_PATH = 'backend/model/label_encoder_v6.pkl'
+MAX_FRAMES = 50
+FEATURE_DIM = 225  # 21*3 + 21*3 + 33*3
+
+# -------------------
+# Load model & encoder
+# -------------------
+model = load_model(MODEL_PATH)
+with open(ENCODER_PATH, 'rb') as f:
+    le = pickle.load(f)
 
 @socketio.on('connect')
 def handle_connect():
@@ -278,6 +193,88 @@ def handle_landmark_data(data):
     # This will be very light on the CPU.
     # print("Received landmarks for pose:", len(data.get('poseLandmarks', [])))
     pass # Add your data saving logic here
+
+
+
+
+def normalize_landmarks(left, right, pose):
+    left_coords = [0.0] * 63
+    right_coords = [0.0] * 63
+    pose_coords = [0.0] * 99
+
+    # Pose normalization
+    if pose:
+        try:
+            lx, ly, lz = pose[11]["x"], pose[11]["y"], pose[11]["z"]
+            rx, ry, rz = pose[12]["x"], pose[12]["y"], pose[12]["z"]
+            cx, cy, cz = (lx + rx) / 2, (ly + ry) / 2, (lz + rz) / 2
+            shoulder_dist = np.sqrt((rx - lx) ** 2 + (ry - ly) ** 2 + (rz - lz) ** 2)
+            if shoulder_dist == 0:
+                shoulder_dist = 1e-6
+            pose_coords = [((lm["x"] - cx) / shoulder_dist,
+                            (lm["y"] - cy) / shoulder_dist,
+                            (lm["z"] - cz) / shoulder_dist) for lm in pose]
+            pose_coords = [v for lm in pose_coords for v in lm]
+        except Exception:
+            pass
+
+    # Left hand normalization
+    if left:
+        try:
+            wrist = left[0]
+            wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
+            left_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in left]
+            left_coords = [v for lm in left_coords for v in lm]
+        except Exception:
+            pass
+
+    # Right hand normalization
+    if right:
+        try:
+            wrist = right[0]
+            wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
+            right_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in right]
+            right_coords = [v for lm in right_coords for v in lm]
+        except Exception:
+            pass
+
+    return left_coords, right_coords, pose_coords
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    try:
+        json_data = request.get_json()
+        sequence_data = json_data.get('data', [])
+
+        if not sequence_data or len(sequence_data) != MAX_FRAMES:
+            return jsonify({"error": f"Invalid data: sequence must have length {MAX_FRAMES}"}), 400
+
+        processed_sequence = []
+        for frame in sequence_data:
+            left = frame.get("left", [])
+            right = frame.get("right", [])
+            pose = frame.get("pose", [])
+            left_coords, right_coords, pose_coords = normalize_landmarks(left, right, pose)
+            features = left_coords + right_coords + pose_coords
+            processed_sequence.append(features)
+
+        model_input = np.array(processed_sequence)
+        model_input = np.expand_dims(model_input, axis=0) # (1, 50, 225)
+
+        prediction = model.predict(model_input)[0]
+        predicted_class_index = np.argmax(prediction)
+        predicted_label = le.inverse_transform([predicted_class_index])[0]
+        confidence = float(np.max(prediction))
+
+        return jsonify({
+            "prediction": predicted_label,
+            "confidence": confidence
+        })
+
+    except Exception as e:
+        print(f"Error during prediction: {e}")
+        return jsonify({"error": "An error occurred during prediction."}), 500
+
 
 @app.route('/save_data', methods=['POST'])
 def save_data():
@@ -358,5 +355,60 @@ def get_sample(word, filename):
         data = json.load(f)
     return jsonify(data)
 
+@app.route("/count_samples", methods=["GET"])
+def count_samples():
+    counts = {}
+    if os.path.exists(DATASET_DIR):
+        for label in os.listdir(DATASET_DIR):
+            label_path = os.path.join(DATASET_DIR, label)
+            if os.path.isdir(label_path):
+                counts[label] = len(os.listdir(label_path))  # count JSON files per word
+    return jsonify(counts)
+
+@app.route("/add_label", methods=["POST"])
+def add_label():
+    data = request.json
+    label = data.get("label")
+    link = data.get("link")
+
+    if not label or not link:
+        return jsonify({"error": "Both 'label' and 'link' are required"}), 400
+
+    # Ensure metadata folder exists
+    os.makedirs("metadata", exist_ok=True)
+    metadata_file = "metadata/links.json"
+
+    # Load existing metadata
+    if os.path.exists(metadata_file):
+        with open(metadata_file, "r") as f:
+            metadata = json.load(f)
+    else:
+        metadata = {}
+
+    # Add or update label with link
+    if label in metadata:
+        if link not in metadata[label]:
+            metadata[label].append(link)
+    else:
+        metadata[label] = [link]
+
+    # Save metadata
+    with open(metadata_file, "w") as f:
+        json.dump(metadata, f, indent=4)
+
+    return jsonify({
+        "status": "success",
+        "label": label,
+        "links": metadata[label]
+    })
+
+@app.route("/get-dataset-videos")
+def get_dataset_videos():
+    json_path = os.path.join(os.path.dirname(__file__), "../metadata/links.json")
+    with open(json_path, 'r') as f:
+        dataset = json.load(f)
+    return jsonify(dataset)
+
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
+    socketio.run(app,host="0.0.0.0", debug=True, port=5000)
