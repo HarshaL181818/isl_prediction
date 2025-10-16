@@ -14,6 +14,7 @@ import DatasetBrowser from './Components/DatasetBrowser';
 import AddLabel from './Components/AddLabel';
 import TrainingProgress from './Components/TrainingProgress';
 import RealtimePredictor from './Components/RealtimePredictor';
+import Sentence from './Components/Sentence';
 function App() {
   return (
     <Router>
@@ -31,6 +32,7 @@ function App() {
             <Route path="/view" element={<DatasetBrowser />} />
             <Route path='/add' element={<AddLabel/>}/>
             <Route path='/training' element={<TrainingProgress/>}/>
+            <Route path='/sentence' element={<Sentence/>}/>
           </Routes>
         </main>
         <Footer />

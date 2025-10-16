@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import './LivePredictor.css';
+import { Video, StopCircle, PlayCircle, Activity, Clock, AlertCircle, CheckCircle, Lightbulb } from 'lucide-react';
+
 
 // Hand + Pose connections
 const HAND_CONNECTIONS = [
@@ -309,81 +310,263 @@ const LivePredictor = () => {
   };
 
   return (
-    <div className="live-predictor-container">
-      <h1 className="page-title">Live Sign Language Recognition</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-indigo-950 to-purple-950 text-white pt-24 pb-12">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
 
-      <div className="video-prediction-container">
-        <div className="video-container">
-          <video ref={videoRef} className="video-feed" autoPlay playsInline muted />
-          <canvas ref={canvasRef} style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }} />
+      <div className="container mx-auto px-6 relative z-10">
+        {/* Page Title */}
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-full text-sm mb-6">
+            <Video className="w-4 h-4 text-blue-300" />
+            <span>Live AI Interpretation</span>
+          </div>
+          <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent mb-4">
+            Real-time Medical Sign Interpretation
+          </h1>
+          <p className="text-blue-200/60 text-lg max-w-2xl mx-auto">
+            Continuous AI-powered recognition for seamless patient-doctor communication
+          </p>
+        </div>
 
-          {isRecording && (
-            <div className="countdown-timer">
-              Capturing: {frameCount} frames
-              {pendingFrames > 0 && <span> | Queued batches: {pendingFrames}</span>}
-              {loading && <span> | Processing...</span>}
+        {/* Video and Prediction Container */}
+        <div className="grid lg:grid-cols-3 gap-8 mb-12">
+          {/* Video Container */}
+          <div className="lg:col-span-2">
+            <div className="relative bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+              <div className="relative aspect-video bg-gradient-to-br from-blue-900/20 to-purple-900/20">
+                <video 
+                  ref={videoRef} 
+                  className="w-full h-full object-cover"
+                  autoPlay 
+                  playsInline 
+                  muted 
+                />
+                <canvas 
+                  ref={canvasRef} 
+                  className="absolute left-0 top-0 pointer-events-none w-full h-full"
+                />
+
+                {/* Recording Indicator */}
+                {isRecording && (
+                  <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-red-500/20 backdrop-blur-xl border border-red-400/30 rounded-xl">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium">LIVE</span>
+                    </div>
+                    
+                    <div className="px-4 py-3 bg-blue-500/20 backdrop-blur-xl border border-blue-400/30 rounded-xl">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Activity className="w-4 h-4" />
+                        <span>{frameCount} frames</span>
+                      </div>
+                      {pendingFrames > 0 && (
+                        <div className="text-xs text-blue-300 mt-1">
+                          Queued: {pendingFrames}
+                        </div>
+                      )}
+                      {loading && (
+                        <div className="text-xs text-purple-300 mt-1 flex items-center gap-1">
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Analyzing...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Placeholder when not active */}
+                {!isActive && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-900/40 to-purple-900/40 backdrop-blur-sm">
+                    <div className="text-center">
+                      <Video className="w-20 h-20 text-blue-300/50 mx-auto mb-4" />
+                      <p className="text-blue-200/60">Camera feed will appear here</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="p-6 bg-gradient-to-r from-blue-900/20 to-purple-900/20">
+                {!isActive ? (
+                  <button 
+                    onClick={startContinuousRecording}
+                    className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl font-semibold hover:shadow-xl hover:shadow-green-500/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3"
+                  >
+                    <PlayCircle className="w-5 h-5" />
+                    Start Live Medical Recognition
+                  </button>
+                ) : (
+                  <button 
+                    onClick={stopContinuousRecording}
+                    className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-600 rounded-xl font-semibold hover:shadow-xl hover:shadow-red-500/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3"
+                  >
+                    <StopCircle className="w-5 h-5" />
+                    Stop Live Interpretation
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Current Prediction Display */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 p-8 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold">Current Interpretation</h2>
+              </div>
+
+              <div className="min-h-[200px] flex items-center justify-center">
+                {loading ? (
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-blue-300">Analyzing Patient Signs...</p>
+                  </div>
+                ) : prediction ? (
+                  <div className="p-6 bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-green-400/30 rounded-2xl w-full">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <span className="text-sm font-semibold text-green-200">Detected</span>
+                    </div>
+                    <p className="text-2xl font-bold text-white">{prediction}</p>
+                  </div>
+                ) : (
+                  <div className="text-center text-blue-300/50">
+                    <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>No interpretation yet</p>
+                    <p className="text-sm mt-2">Start recognition to begin</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-xl text-red-200 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Prediction History */}
+        <div className="mb-12 p-8 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <Clock className="w-5 h-5" />
+            </div>
+            <h2 className="text-2xl font-bold">Medical Dialogue History</h2>
+          </div>
+
+          {allPredictions.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+              {allPredictions.map((item, index) => (
+                <div 
+                  key={index}
+                  className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:border-blue-400/30 hover:bg-white/10 transition-all group"
+                >
+                  <div className="flex-shrink-0 w-2 h-2 bg-blue-400 rounded-full mt-2 group-hover:scale-150 transition-transform"></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-xs text-blue-300 font-mono">{item.timestamp}</span>
+                      {item.confidence && (
+                        <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-300 rounded-full">
+                          {(item.confidence * 100).toFixed(1)}% confidence
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-white font-medium">{item.prediction}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-blue-300/50">
+              <Clock className="w-16 h-16 mx-auto mb-4 opacity-30" />
+              <p>No medical interpretations recorded yet</p>
+              <p className="text-sm mt-2">Start the live recognition to begin tracking</p>
             </div>
           )}
+        </div>
 
-          <div className="controls">
-            {!isActive ? (
-              <button className="control-button start-button" onClick={startContinuousRecording}>
-                Start Continuous Recognition
-              </button>
-            ) : (
-              <button className="control-button stop-button" onClick={stopContinuousRecording}>
-                Stop Recognition
-              </button>
-            )}
+        {/* Instructions */}
+        <div className="p-8 bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border border-blue-400/20 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+              <Lightbulb className="w-5 h-5" />
+            </div>
+            <h3 className="text-2xl font-bold">How to use for Patient Consultations</h3>
           </div>
-        </div>
 
-        <div className="prediction-display">
-          <h2>Current Prediction</h2>
-          {loading ? (
-            <div className="loading">Processing...</div>
-          ) : prediction ? (
-            <div className="prediction-result">{prediction}</div>
-          ) : (
-            <div className="no-prediction">No prediction yet</div>
-          )}
-        </div>
-      </div>
-
-      {error && <div className="error-message">{error}</div>}
-
-      <div className="prediction-history">
-        <h2>Prediction History</h2>
-        {allPredictions.length > 0 ? (
-          <div className="prediction-list">
-            {allPredictions.map((item, index) => (
-              <div key={index} className="prediction-item">
-                <span className="prediction-time">{item.timestamp}</span>
-                <span className="prediction-text">
-                  {item.prediction}
-                  {item.confidence && (
-                    <span className="confidence">({(item.confidence * 100).toFixed(1)}%)</span>
-                  )}
+          <ol className="space-y-4 mb-6">
+            {[
+              'Click "Start Live Medical Recognition" to activate webcam.',
+              'Encourage patients to perform signs continuously.',
+              'System will capture and process frames in batches.',
+              'Multiple sign interpretations can be processed simultaneously.',
+              'Monitor interpretations as they appear in the history list, aiding patient understanding.',
+              'Click "Stop Live Interpretation" when the consultation is complete.'
+            ].map((step, index) => (
+              <li key={index} className="flex gap-4 items-start">
+                <span className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                  {index + 1}
                 </span>
-              </div>
+                <span className="text-blue-100 pt-1">{step}</span>
+              </li>
             ))}
+          </ol>
+
+          <div className="p-4 bg-blue-500/20 rounded-xl border border-blue-400/30 flex items-start gap-3">
+            <Lightbulb className="w-5 h-5 text-yellow-300 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-blue-100 mb-1">Pro Tip</p>
+              <p className="text-blue-200/80">
+                Ensure proper lighting and hand visibility for optimal recognition accuracy during consultations.
+              </p>
+            </div>
           </div>
-        ) : (
-          <p className="no-history">No predictions recorded yet</p>
-        )}
+        </div>
       </div>
-      <div className="instructions">
-        <h3>How to use:</h3>
-        <ol>
-          <li>Click "Start Continuous Recognition" to activate webcam</li>
-          <li>Perform signs continuously as the system captures frames</li>
-          <li>System will capture and process 110 frames at a time</li>
-          <li>Multiple predictions can be processed simultaneously</li>
-          <li>Watch predictions appear in the history list</li>
-          <li>Click "Stop Recognition" when finished</li>
-        </ol>
-        <p className="note">Tip: Make sure your hands are clearly visible and well-lit for better recognition accuracy.</p>
-      </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.8s ease-out;
+        }
+        
+        .delay-1000 {
+          animation-delay: 1000ms;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(139, 92, 246, 0.5);
+          border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(139, 92, 246, 0.7);
+        }
+      `}</style>
     </div>
   );
 };

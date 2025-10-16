@@ -1,5 +1,6 @@
 // DataCollector.jsx
 // React component that reproduces the MediaPipe HandLandmarker demo (image click detection + webcam continuous detection)
+import { Camera, StopCircle, PlayCircle, Video, Link as LinkIcon, Database, Eye, CheckCircle, AlertCircle, Zap, FileVideo } from 'lucide-react';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -433,98 +434,213 @@ useEffect(() => {
   }, []);
   
   return (
-    <div ref={containerRef} className="p-4 max-w-4xl mx-auto">
-      <h2 className="text-xl font-semibold mb-3">Hand landmark detection (React)</h2>
-      
-      {/* Input + recording controls */}
-      <div className="flex gap-2 items-center mb-3">
-        <input
-          type="text"
-          list="word-options"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Enter label/word"
-          className="border px-2 py-1 rounded"
-        />
+       <div className="min-h-screen bg-gradient-to-br from-blue-950 via-indigo-950 to-purple-950 text-white relative overflow-hidden -mx-[calc((100vw-100%)/2)]">{/* Animated background */}
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+    <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+  </div>
 
-        <datalist id="word-options">
-          {words.map((w) => (
-            <option key={w.label} value={w.label} />
-          ))}
-          {label && !words.some((w) => w.label.toLowerCase() === label.toLowerCase()) && (
-            <option value={label + " (new)"} />
-          )}
-        </datalist>
-
-        <input
-          type="text"
-          value={link}
-          onChange={(e) => setLink(e.target.value)}
-          placeholder="Enter link"
-          className="border px-2 py-1 rounded"
-        />
-        <button
-          className={`px-4 py-2 rounded ${isRecording ? "bg-gray-500" : "bg-green-600 text-white"}`}
-          onClick={startRecording}
-          disabled={isRecording}
-        >
-          Start
-        </button>
-        <button
-          className="px-4 py-2 rounded bg-red-600 text-white"
-          onClick={stopRecording}
-          disabled={!isRecording}
-        >
-          Stop
-        </button>
-        <button
-          className="px-4 py-2 rounded bg-indigo-600 text-white"
-          onClick={() => navigate('/view')}
-        >
-          View Stored Data
-        </button>
-        {existingWord && (
-          <div className="ml-2 text-sm text-blue-600">
-            Already exists:{" "}
-            <a
-              href={existingWord.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              {existingWord.link}
-            </a>
-          </div>
-        )}
+  <div ref={containerRef} className="container mx-auto px-6 relative z-10 mt-20">
+    {/* Page Title */}
+    <div className="text-center mb-12 animate-fade-in">
+      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 backdrop-blur-sm border border-green-400/30 rounded-full text-sm mb-6">
+        <Database className="w-4 h-4 text-green-300" />
+        <span>Contribute to Training Dataset</span>
       </div>
-      {label && (
-        <div className="ml-2 text-sm text-purple-600">
-          Samples stored for "{label}": {sampleCounts[label] || 0}
+      <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-green-200 via-emerald-200 to-blue-200 bg-clip-text text-transparent mb-4">
+        Medical Sign Data Collection
+      </h1>
+      <p className="text-blue-200/60 text-lg max-w-2xl mx-auto">
+        Help improve our AI model by recording medical sign language gestures
+      </p>
+    </div>
+
+    {/* --- CHANGE START --- */}
+    {/* 1. Added a Grid container to hold both columns. */}
+    {/* It stacks on mobile (grid-cols-1) and goes side-by-side on large screens (lg:grid-cols-5). */}
+    {/* `items-start` ensures columns align at the top. */}
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+
+      {/* 2. This is the new Controls Column (takes 2 of 5 grid columns on large screens) */}
+      <div className="lg:col-span-2 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl p-8">
+        <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+            <FileVideo className="w-5 h-5" />
+          </div>
+          Recording Configuration
+        </h3>
+
+        {/* Input Section */}
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-blue-200 mb-2">
+              Medical Sign / Term
+            </label>
+            <input
+              type="text"
+              list="word-options"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Enter sign (e.g., Pain, Fever)"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-400/50 focus:bg-white/10 transition-all"
+            />
+            <datalist id="word-options">
+              {words.map((w) => (
+                <option key={w.label} value={w.label} />
+              ))}
+              {label &&
+                !words.some(
+                  (w) => w.label.toLowerCase() === label.toLowerCase()
+                ) && <option value={label + ' (new medical sign)'} />}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-blue-200 mb-2 flex items-center gap-2">
+              <LinkIcon className="w-4 h-4" />
+              Reference Link (Optional)
+            </label>
+            <input
+              type="text"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="Enter reference link (e.g., YouTube)"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-purple-400/50 focus:bg-white/10 transition-all"
+            />
+          </div>
         </div>
-      )}
-      <section>
-        <h3 className="font-medium">Demo: Webcam continuous hand landmark detection</h3>
-        <p className="text-sm">Click the button and allow webcam access.</p>
-        <div className="mt-2 flex items-center gap-2">
+
+        {/* Unified Action Buttons */}
+        <div className="flex flex-wrap gap-4 justify-center">
+          {/* Start */}
           <button
-            className="px-4 py-2 rounded bg-blue-600 text-white"
-            onClick={toggleWebcam}
+            onClick={startRecording}
+            disabled={isRecording}
+            className="flex-1 min-w-[150px] py-3 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl font-semibold hover:shadow-xl hover:shadow-green-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {webcamRunningRef.current ? 'Disable Webcam' : 'Enable Webcam'}
+            <PlayCircle className="w-5 h-5" />
+            Start
           </button>
 
+          {/* Stop */}
+          <button
+            onClick={stopRecording}
+            disabled={!isRecording}
+            className="flex-1 min-w-[150px] py-3 bg-gradient-to-r from-red-600 to-rose-600 rounded-xl font-semibold hover:shadow-xl hover:shadow-red-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <StopCircle className="w-5 h-5" />
+            Stop
+          </button>
+
+          {/* Webcam Toggle */}
+          <button
+            onClick={toggleWebcam}
+            className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 mt-2 ${
+              webcamRunningRef.current
+                ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:shadow-xl hover:shadow-red-500/50'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-xl hover:shadow-blue-500/50'
+            }`}
+          >
+            {webcamRunningRef.current ? (
+              <>
+                <StopCircle className="w-5 h-5" />
+                Disable Webcam
+              </>
+            ) : (
+              <>
+                <Camera className="w-5 h-5" />
+                Enable Webcam
+              </>
+            )}
+          </button>
+
+          {/* View Data */}
+          <button
+            onClick={() => navigate('/view')}
+            className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl font-semibold hover:shadow-xl hover:shadow-indigo-500/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3 mt-2"
+          >
+            <Eye className="w-5 h-5" />
+            View Data
+          </button>
+        </div>
+      </div>
+
+
+      {/* 3. This is the new Video Column (takes 3 of 5 grid columns on large screens) */}
+      <div className="lg:col-span-3 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl p-6">
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           {isWebcamReady ? (
-            <span className="text-green-600">🎤 Listening...</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-400/30 rounded-full">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-green-300">
+                Capturing Gestures...
+              </span>
+            </div>
           ) : (
-            <span className="text-gray-500">Waiting for webcam...</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500/20 border border-gray-400/30 rounded-full">
+              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-300">
+                Waiting for webcam...
+              </span>
+            </div>
           )}
         </div>
 
-        <div className="mt-4" style={{ position: 'relative', width: '100%', maxWidth: 960 }}>
-          <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%' }} />
-          <canvas ref={canvasRef} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} />
+        {/* Video + Canvas */}
+        <div className="relative bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-2xl overflow-hidden border border-white/10">
+          <div className="relative aspect-video">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute left-0 top-0 w-full h-full pointer-events-none"
+            />
+            {!isWebcamReady && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900/60 to-blue-900/60 backdrop-blur-sm">
+                <div className="text-center">
+                  <Video className="w-20 h-20 text-purple-300/50 mx-auto mb-4" />
+                  <p className="text-blue-200/60 text-lg mb-2">
+                    Webcam Inactive
+                  </p>
+                  <p className="text-blue-300/40 text-sm">
+                    Click "Enable Webcam" to start
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </section>
+      </div>
     </div>
+    {/* --- CHANGE END --- */}
+  </div>
+
+  <style jsx>{`
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade-in {
+      animation: fade-in 0.8s ease-out;
+    }
+
+    .delay-1000 {
+      animation-delay: 1000ms;
+    }
+  `}</style>
+</div>
+
   );
 }

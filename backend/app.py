@@ -1,7 +1,4 @@
 
-
-
-
 import os
 from backend.agents.sentenceGenerator import SentenceGeneratorAgent
 from flask import Flask, request, jsonify

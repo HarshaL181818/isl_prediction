@@ -1,5 +1,6 @@
 // DataVisualizer.jsx
 import React, { useState, useEffect } from "react";
+import './DatasetViewer.css';
 
 const POSE_CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,7],
@@ -50,100 +51,101 @@ const DataVisualizer = ({ data }) => {
   const scale = (val, size) => val * size;
 
   return (
-    <div style={{ padding: "16px" }}>
-      <h3>Frame {frameIndex + 1} / {data.length}</h3>
+    <div className="healthcare-landmark-visualizer">
+  <h3 className="healthcare-frame-title">
+    Frame Analysis: {frameIndex + 1} / {data.length}
+  </h3>
 
-      <svg width={width} height={height} style={{ border: "1px solid #ccc" }}>
-        {/* Pose */}
-        {pose && POSE_CONNECTIONS.map(([a, b], i) => {
-          const p1 = pose[a];
-          const p2 = pose[b];
-          if (!p1 || !p2) return null;
-          return (
-            <line
-              key={`pose-${i}`}
-              x1={scale(p1.x, width)}
-              y1={scale(p1.y, height)}
-              x2={scale(p2.x, width)}
-              y2={scale(p2.y, height)}
-              stroke="#00FFFF"
-              strokeWidth={2}
-            />
-          );
-        })}
-        {pose && pose.map((p, i) => (
-          <circle
-            key={`pose-pt-${i}`}
-            cx={scale(p.x, width)}
-            cy={scale(p.y, height)}
-            r={3}
-            fill="#FF00FF"
+  <div className="landmark-svg-container">
+    <svg width={width} height={height} className="landmark-svg">
+      {/* Pose Landmarks */}
+      {pose && POSE_CONNECTIONS.map(([a, b], i) => {
+        const p1 = pose[a];
+        const p2 = pose[b];
+        if (!p1 || !p2) return null;
+        return (
+          <line
+            key={`pose-line-${i}`}
+            x1={scale(p1.x, width)}
+            y1={scale(p1.y, height)}
+            x2={scale(p2.x, width)}
+            y2={scale(p2.y, height)}
+            className="landmark-line pose-line"
           />
-        ))}
+        );
+      })}
+      {pose && pose.map((p, i) => (
+        <circle
+          key={`pose-point-${i}`}
+          cx={scale(p.x, width)}
+          cy={scale(p.y, height)}
+          r={4}
+          className="landmark-point pose-point"
+        />
+      ))}
 
-        {/* Left Hand */}
-        {left && HAND_CONNECTIONS.map(([a, b], i) => {
-          const p1 = left[a];
-          const p2 = left[b];
-          if (!p1 || !p2) return null;
-          return (
-            <line
-              key={`left-${i}`}
-              x1={scale(p1.x, width)}
-              y1={scale(p1.y, height)}
-              x2={scale(p2.x, width)}
-              y2={scale(p2.y, height)}
-              stroke="#00FF00"
-              strokeWidth={3}
-            />
-          );
-        })}
-        {left && left.map((p, i) => (
-          <circle
-            key={`left-pt-${i}`}
-            cx={scale(p.x, width)}
-            cy={scale(p.y, height)}
-            r={3}
-            fill="#FF0000"
+      {/* Left Hand Landmarks */}
+      {left && HAND_CONNECTIONS.map(([a, b], i) => {
+        const p1 = left[a];
+        const p2 = left[b];
+        if (!p1 || !p2) return null;
+        return (
+          <line
+            key={`left-hand-line-${i}`}
+            x1={scale(p1.x, width)}
+            y1={scale(p1.y, height)}
+            x2={scale(p2.x, width)}
+            y2={scale(p2.y, height)}
+            className="landmark-line left-hand-line"
           />
-        ))}
+        );
+      })}
+      {left && left.map((p, i) => (
+        <circle
+          key={`left-hand-point-${i}`}
+          cx={scale(p.x, width)}
+          cy={scale(p.y, height)}
+          r={4}
+          className="landmark-point left-hand-point"
+        />
+      ))}
 
-        {/* Right Hand */}
-        {right && HAND_CONNECTIONS.map(([a, b], i) => {
-          const p1 = right[a];
-          const p2 = right[b];
-          if (!p1 || !p2) return null;
-          return (
-            <line
-              key={`right-${i}`}
-              x1={scale(p1.x, width)}
-              y1={scale(p1.y, height)}
-              x2={scale(p2.x, width)}
-              y2={scale(p2.y, height)}
-              stroke="#6600FF"
-              strokeWidth={3}
-            />
-          );
-        })}
-        {right && right.map((p, i) => (
-          <circle
-            key={`right-pt-${i}`}
-            cx={scale(p.x, width)}
-            cy={scale(p.y, height)}
-            r={3}
-            fill="#0000FF"
+      {/* Right Hand Landmarks */}
+      {right && HAND_CONNECTIONS.map(([a, b], i) => {
+        const p1 = right[a];
+        const p2 = right[b];
+        if (!p1 || !p2) return null;
+        return (
+          <line
+            key={`right-hand-line-${i}`}
+            x1={scale(p1.x, width)}
+            y1={scale(p1.y, height)}
+            x2={scale(p2.x, width)}
+            y2={scale(p2.y, height)}
+            className="landmark-line right-hand-line"
           />
-        ))}
-      </svg>
+        );
+      })}
+      {right && right.map((p, i) => (
+        <circle
+          key={`right-hand-point-${i}`}
+          cx={scale(p.x, width)}
+          cy={scale(p.y, height)}
+          r={4}
+          className="landmark-point right-hand-point"
+        />
+      ))}
+    </svg>
+  </div>
 
-      {/* Raw frame data */}
-      <div style={{ marginTop: "16px" }}>
-        <h4>Raw Frame Data (Frame {frameIndex})</h4>
-        <pre style={{ maxHeight: "200px", overflow: "auto", background: "#f8f9fa", padding: "8px" }}>
-          {JSON.stringify(frame, null, 2)}
-        </pre>
-      </div>
-    </div>
+  {/* Raw frame data */}
+  <div className="raw-data-container">
+    <h4 className="raw-data-title">Biometric Frame Data (Frame {frameIndex + 1})</h4>
+    <pre className="raw-data-viewer">
+      {JSON.stringify(frame, null, 2)}
+    </pre>
+  </div>
+</div>
   );
 };
 
