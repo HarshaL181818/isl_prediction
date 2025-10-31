@@ -298,6 +298,24 @@ const RealtimePredictor = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (generatedSentence) {
+            speakSentence(generatedSentence);
+        }
+    }, [generatedSentence]);
+
+
+    const speakSentence = (text) => {
+        if (!text) return;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-US";
+        utterance.rate = 1.0;
+        utterance.pitch = 1.1;
+        utterance.volume = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-950 via-indigo-950 to-purple-950 text-white relative overflow-hidden -mx-[calc((100vw-100%)/2)]">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -397,17 +415,26 @@ const RealtimePredictor = () => {
                             >
                                 {isGeneratingSentence ? 'Generating...' : 'Generate Sentence'}
                             </button>
-                             <div className="min-h-[100px] flex items-center justify-center p-4 bg-black/20 rounded-lg">
+                             <div className="min-h-[100px] flex flex-col items-center justify-center p-4 bg-black/20 rounded-lg">
                                 {isGeneratingSentence ? (
-                                     <div className="w-8 h-8 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin"></div>
+                                    <div className="w-8 h-8 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin"></div>
                                 ) : generatedSentence ? (
-                                    <p className="text-green-200 text-center fade-in">{generatedSentence}</p>
+                                    <>
+                                        <p className="text-green-200 text-center fade-in mb-4">{generatedSentence}</p>
+                                        <button
+                                            onClick={() => speakSentence(generatedSentence)}
+                                            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg text-sm font-semibold hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                                        >
+                                            <Video className="w-4 h-4" /> Speak Sentence
+                                        </button>
+                                    </>
                                 ) : sentenceError ? (
                                     <p className="text-red-400 text-sm text-center fade-in">{sentenceError}</p>
                                 ) : (
-                                     <p className="text-blue-300/50 text-sm text-center">Final sentence will appear here.</p>
+                                    <p className="text-blue-300/50 text-sm text-center">Final sentence will appear here.</p>
                                 )}
                             </div>
+
                         </div>
                     </div>
                 </div>
