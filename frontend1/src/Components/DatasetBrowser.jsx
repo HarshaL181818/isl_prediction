@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import DataVisualizer from "./DataVisualizer"; // your visualization component
 import { FileText, Video, Eye, Link2, Loader, AlertCircle, ChevronRight } from 'lucide-react';
-
+import io from 'socket.io-client';
+const socket = io("http://localhost:5000");
 const DatasetBrowser = () => {
   const [words, setWords] = useState([]);
   const [selectedWord, setSelectedWord] = useState(null);
@@ -12,7 +13,7 @@ const DatasetBrowser = () => {
   const [loading, setLoading] = useState({ words: false, samples: false, data: false });
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const fetchWords = () => {
     setLoading(prev => ({ ...prev, words: true }));
     setError(null);
     fetch("http://localhost:5000/list_words")
@@ -23,8 +24,34 @@ const DatasetBrowser = () => {
       .then((data) => setWords(data))
       .catch(() => setError("Failed to fetch words. Is the server running?"))
       .finally(() => setLoading(prev => ({ ...prev, words: false })));
-  }, []);
+  };
+  useEffect(()=>{
+    fetchWords();
+  },[]);
 
+  useEffect(()=>{
+    socket.on("dataset_updated",(data)=>{
+      fetchWords();
+      if(selectedWord && data.label === selectedWord){
+          fetchSamples(selectedWord);
+      }
+    });
+    return () =>{
+      socket.off("dataset_updated");
+    };
+  },[selectedWord]);
+  const fetchSamples = (word) => {
+    setLoading(prev => ({ ...prev, samples: true }));
+    setError(null);
+    fetch(`http://localhost:5000/list_samples/${word}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setSamples(data))
+      .catch(() => setError(`Failed to fetch samples for "${word}"`))
+      .finally(() => setLoading(prev => ({ ...prev, samples: false })));
+  };
   // Fetch samples when a word is selected
   const handleWordClick = (word) => {
     if (word === selectedWord) return; // Don't refetch if already selected

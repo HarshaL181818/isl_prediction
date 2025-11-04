@@ -1,0 +1,6 @@
+{
+  "SEQ_LEN": 50,
+  "N_HAND": 21,
+  "N_POSE": 33,
+  "FEAT_PER_FRAME": 225
+}

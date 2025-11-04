@@ -1,25 +1,23 @@
 
 import os
-from backend.agents.sentenceGenerator import SentenceGeneratorAgent
 from flask import Flask, request, jsonify
-from flask import send_from_directory
-import cv2
-import numpy as np
+import numpy as np # type: ignore
 import pickle
-from tensorflow.keras.models import load_model
-import tensorflow as tf
-from flask_cors import CORS
-from werkzeug.utils import secure_filename
+from tensorflow.keras.models import load_model # type: ignore
+import tensorflow as tf # type: ignore
+from flask_cors import CORS # type: ignore
+from flask_socketio import SocketIO # type: ignore
+from flask import Flask, request, jsonify
+import json
 
 app = Flask(__name__)
 CORS(app)
-from flask_socketio import SocketIO
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'backend/uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# UPLOAD_FOLDER = os.path.join(os.getcwd(), 'backend/uploads')
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # GPU setup
 gpus = tf.config.list_physical_devices('GPU')
@@ -148,31 +146,26 @@ else:
 
 #     return {'generated_sentence': results}
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
-import pickle
-import numpy as np
-from tensorflow.keras.models import load_model
-from collections import deque
-import json
-app = Flask(__name__)
-CORS(app)
+
 
 # -------------------
 # Config
 # -------------------
-MODEL_PATH = 'backend/model/sign_model_v6.h5'
-ENCODER_PATH = 'backend/model/label_encoder_v6.pkl'
-MAX_FRAMES = 50
-FEATURE_DIM = 225  # 21*3 + 21*3 + 33*3
+# MODEL_PATH = 'backend/model/sign_model_v6.h5'
+# ENCODER_PATH = 'backend/model/label_encoder_v6.pkl'
+# MAX_FRAMES = 50
+# FEATURE_DIM = 225  # 21*3 + 21*3 + 33*3
+ART_DIR = "backend/artifacts"
+MODEL_PATH = os.path.join(ART_DIR, "best_model.keras")
+LABELS_PATH = os.path.join(ART_DIR, "labels.json")
+CONFIG_PATH = os.path.join(ART_DIR, "config.json")
 
 # -------------------
 # Load model & encoder
 # -------------------
-model = load_model(MODEL_PATH)
-with open(ENCODER_PATH, 'rb') as f:
-    le = pickle.load(f)
+# model = load_model(MODEL_PATH)
+# with open(ENCODER_PATH, 'rb') as f:
+#     le = pickle.load(f)
 
 @socketio.on('connect')
 def handle_connect():
@@ -194,84 +187,225 @@ def handle_landmark_data(data):
 
 
 
-def normalize_landmarks(left, right, pose):
-    left_coords = [0.0] * 63
-    right_coords = [0.0] * 63
-    pose_coords = [0.0] * 99
+# def normalize_landmarks(left, right, pose):
+#     left_coords = [0.0] * 63
+#     right_coords = [0.0] * 63
+#     pose_coords = [0.0] * 99
 
-    # Pose normalization
-    if pose:
-        try:
-            lx, ly, lz = pose[11]["x"], pose[11]["y"], pose[11]["z"]
-            rx, ry, rz = pose[12]["x"], pose[12]["y"], pose[12]["z"]
-            cx, cy, cz = (lx + rx) / 2, (ly + ry) / 2, (lz + rz) / 2
-            shoulder_dist = np.sqrt((rx - lx) ** 2 + (ry - ly) ** 2 + (rz - lz) ** 2)
-            if shoulder_dist == 0:
-                shoulder_dist = 1e-6
-            pose_coords = [((lm["x"] - cx) / shoulder_dist,
-                            (lm["y"] - cy) / shoulder_dist,
-                            (lm["z"] - cz) / shoulder_dist) for lm in pose]
-            pose_coords = [v for lm in pose_coords for v in lm]
-        except Exception:
-            pass
+#     # Pose normalization
+#     if pose:
+#         try:
+#             lx, ly, lz = pose[11]["x"], pose[11]["y"], pose[11]["z"]
+#             rx, ry, rz = pose[12]["x"], pose[12]["y"], pose[12]["z"]
+#             cx, cy, cz = (lx + rx) / 2, (ly + ry) / 2, (lz + rz) / 2
+#             shoulder_dist = np.sqrt((rx - lx) ** 2 + (ry - ly) ** 2 + (rz - lz) ** 2)
+#             if shoulder_dist == 0:
+#                 shoulder_dist = 1e-6
+#             pose_coords = [((lm["x"] - cx) / shoulder_dist,
+#                             (lm["y"] - cy) / shoulder_dist,
+#                             (lm["z"] - cz) / shoulder_dist) for lm in pose]
+#             pose_coords = [v for lm in pose_coords for v in lm]
+#         except Exception:
+#             pass
 
-    # Left hand normalization
-    if left:
-        try:
-            wrist = left[0]
-            wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
-            left_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in left]
-            left_coords = [v for lm in left_coords for v in lm]
-        except Exception:
-            pass
+#     # Left hand normalization
+#     if left:
+#         try:
+#             wrist = left[0]
+#             wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
+#             left_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in left]
+#             left_coords = [v for lm in left_coords for v in lm]
+#         except Exception:
+#             pass
 
-    # Right hand normalization
-    if right:
-        try:
-            wrist = right[0]
-            wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
-            right_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in right]
-            right_coords = [v for lm in right_coords for v in lm]
-        except Exception:
-            pass
+#     # Right hand normalization
+#     if right:
+#         try:
+#             wrist = right[0]
+#             wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
+#             right_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in right]
+#             right_coords = [v for lm in right_coords for v in lm]
+#         except Exception:
+#             pass
 
-    return left_coords, right_coords, pose_coords
+#     return left_coords, right_coords, pose_coords
 
+# @app.route("/predict", methods=["POST"])
+# def predict():
+#     try:
+#         json_data = request.get_json()
+#         sequence_data = json_data.get('data', [])
+
+#         if not sequence_data or len(sequence_data) != MAX_FRAMES:
+#             return jsonify({"error": f"Invalid data: sequence must have length {MAX_FRAMES}"}), 400
+
+#         processed_sequence = []
+#         for frame in sequence_data:
+#             left = frame.get("left", [])
+#             right = frame.get("right", [])
+#             pose = frame.get("pose", [])
+#             left_coords, right_coords, pose_coords = normalize_landmarks(left, right, pose)
+#             features = left_coords + right_coords + pose_coords
+#             processed_sequence.append(features)
+
+#         model_input = np.array(processed_sequence)
+#         model_input = np.expand_dims(model_input, axis=0) # (1, 50, 225)
+
+#         prediction = model.predict(model_input)[0]
+#         predicted_class_index = np.argmax(prediction)
+#         predicted_label = le.inverse_transform([predicted_class_index])[0]
+#         confidence = float(np.max(prediction))
+
+#         return jsonify({
+#             "prediction": predicted_label,
+#             "confidence": confidence
+#         })
+
+#     except Exception as e:
+#         print(f"Error during prediction: {e}")
+#         return jsonify({"error": "An error occurred during prediction."}), 500
+
+class Preprocessor:
+    def __init__(self, seq_len=50, n_hand=21, n_pose=33):
+        self.SEQ_LEN = seq_len
+        self.N_HAND = n_hand
+        self.N_POSE = n_pose
+        self.FEAT_PER_FRAME = (self.N_HAND*3) + (self.N_HAND*3) + (self.N_POSE*3)  # L + R + Pose
+
+    def _to_xyz_array(self, items, expected_len):
+        # items: list[ {x:..., y:..., z:...}, ... ]
+        out = np.zeros((expected_len, 3), dtype=np.float32)
+        if not isinstance(items, (list, tuple)) or len(items) == 0:
+            return out
+        m = min(len(items), expected_len)
+        for i in range(m):
+            lm = items[i] or {}
+            try:
+                out[i, 0] = float(lm.get('x', 0.0))
+                out[i, 1] = float(lm.get('y', 0.0))
+                out[i, 2] = float(lm.get('z', 0.0))
+            except Exception:
+                # If malformed entries appear
+                out[i] = 0.0
+        return out
+
+    def _vectorize_frame(self, frame):
+        # frame: { left: [...], right: [...], pose: [...] }
+        left  = self._to_xyz_array(frame.get('left', []),  self.N_HAND)
+        right = self._to_xyz_array(frame.get('right', []), self.N_HAND)
+        pose  = self._to_xyz_array(frame.get('pose', []),  self.N_POSE)
+
+        # Shoulder-center normalization (if available)
+        # Mediapipe Pose indices: 11 (left_shoulder), 12 (right_shoulder)
+        l_sh, r_sh = pose[11], pose[12]
+        has_shoulders = (np.any(l_sh) and np.any(r_sh))
+        if has_shoulders:
+            center = (l_sh + r_sh) / 2.0
+            scale = np.linalg.norm(l_sh[:2] - r_sh[:2])  # use xy distance for scale
+            if scale < 1e-6:
+                scale = 1.0
+        else:
+            # fallback center: nose (0) if present
+            center = pose[0] if np.any(pose[0]) else np.zeros(3, dtype=np.float32)
+            scale = 1.0
+
+        def norm(arr):
+            arr = arr - center
+            arr = arr / scale
+            return arr
+
+        left  = norm(left)
+        right = norm(right)
+        pose  = norm(pose)
+
+        # Flatten: [L(21x3), R(21x3), Pose(33x3)] -> (225,)
+        feat = np.concatenate([left.flatten(), right.flatten(), pose.flatten()], axis=0)
+        return feat.astype(np.float32)
+
+    def preprocess_sequence(self, seq):
+        """
+        seq: list of frames, each frame is {left:[], right:[], pose:[]}
+        Returns (SEQ_LEN, FEAT_PER_FRAME)
+        - If seq shorter than SEQ_LEN, pad at the start with zeros (to match your frontend).
+        - If longer, take the last SEQ_LEN frames (to match streaming).
+        """
+        frames = seq if isinstance(seq, (list, tuple)) else []
+        if len(frames) == 0:
+            frames = [{}]  # at least one empty frame
+
+        # Trim or pad
+        if len(frames) > self.SEQ_LEN:
+            frames = frames[-self.SEQ_LEN:]
+        if len(frames) < self.SEQ_LEN:
+            pad_count = self.SEQ_LEN - len(frames)
+            frames = ([{'left': [], 'right': [], 'pose': []}] * pad_count) + frames
+
+        feats = np.stack([self._vectorize_frame(f) for f in frames], axis=0)
+        return feats  # (SEQ_LEN, FEAT_PER_FRAME)
+
+def load_sequence_from_json_obj(obj):
+    """
+    Robustly extract frames list from various JSON shapes.
+    Expected common case: obj is a list of frames [{left, right, pose}, ...]
+    """
+    if isinstance(obj, list):
+        # Typical case
+        return obj
+    if isinstance(obj, dict):
+        for key in ['sequence', 'frames', 'data']:
+            if key in obj and isinstance(obj[key], list):
+                return obj[key]
+    # Fallback: wrap single frame-like dict
+    if isinstance(obj, dict) and all(k in obj for k in ['left', 'right', 'pose']):
+        return [obj]
+    return []
+
+
+if not os.path.exists(MODEL_PATH):
+    raise RuntimeError("Model not found! Train first.")
+
+model = tf.keras.models.load_model(MODEL_PATH)
+
+with open(LABELS_PATH, "r", encoding="utf-8") as f:
+    idx_to_label = json.load(f)
+
+with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    cfg = json.load(f)
+
+prep = Preprocessor(
+    seq_len=cfg["SEQ_LEN"],
+    n_hand=cfg["N_HAND"],
+    n_pose=cfg["N_POSE"]
+)
+
+
+# ---------------------------
+# PREDICT API
+# ---------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        json_data = request.get_json()
-        sequence_data = json_data.get('data', [])
+        body = request.get_json()
+        if not isinstance(body, dict) or "data" not in body:
+            return jsonify({"error": "Invalid request format"}), 400
 
-        if not sequence_data or len(sequence_data) != MAX_FRAMES:
-            return jsonify({"error": f"Invalid data: sequence must have length {MAX_FRAMES}"}), 400
+        seq_obj = load_sequence_from_json_obj(body["data"])
+        feats = prep.preprocess_sequence(seq_obj)
+        feats = np.expand_dims(feats, axis=0)  # (1,SEQ,F)
 
-        processed_sequence = []
-        for frame in sequence_data:
-            left = frame.get("left", [])
-            right = frame.get("right", [])
-            pose = frame.get("pose", [])
-            left_coords, right_coords, pose_coords = normalize_landmarks(left, right, pose)
-            features = left_coords + right_coords + pose_coords
-            processed_sequence.append(features)
-
-        model_input = np.array(processed_sequence)
-        model_input = np.expand_dims(model_input, axis=0) # (1, 50, 225)
-
-        prediction = model.predict(model_input)[0]
-        predicted_class_index = np.argmax(prediction)
-        predicted_label = le.inverse_transform([predicted_class_index])[0]
-        confidence = float(np.max(prediction))
+        probs = model.predict(feats, verbose=0)[0]
+        idx = int(np.argmax(probs))
+        conf = float(probs[idx])
+        label = idx_to_label[idx]
 
         return jsonify({
-            "prediction": predicted_label,
-            "confidence": confidence
+            "prediction": label,
+            "confidence": conf
         })
-
+    
     except Exception as e:
-        print(f"Error during prediction: {e}")
-        return jsonify({"error": "An error occurred during prediction."}), 500
-
+        print("Prediction error:", e)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/save_data', methods=['POST'])
 def save_data():
@@ -310,7 +444,8 @@ def save_data():
         # Save updated metadata (only when new label is added)
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=4)
-
+    
+    socketio.emit('dataset_updated', {'label': label, 'file': filename})
     return jsonify({
         "status": "success",
         "file": filename,

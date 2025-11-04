@@ -489,6 +489,7 @@ useEffect(() => {
                 <option key={w.label} value={w.label} />
               ))}
               {label &&
+                
                 !words.some(
                   (w) => w.label.toLowerCase() === label.toLowerCase()
                 ) && <option value={label + ' (new medical sign)'} />}
@@ -562,6 +563,13 @@ useEffect(() => {
             <Eye className="w-5 h-5" />
             View Data
           </button>
+          {label && (
+            <p className="text-sm text-green-300 mt-2 font-semibold">
+              Samples collected for "{label}":{" "}
+              <span className="text-white">{sampleCounts[label] || 0}</span>
+            </p>
+          )}
+
         </div>
       </div>
 
