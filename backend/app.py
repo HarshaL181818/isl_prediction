@@ -147,26 +147,6 @@ else:
 #     return {'generated_sentence': results}
 
 
-
-# -------------------
-# Config
-# -------------------
-# MODEL_PATH = 'backend/model/sign_model_v6.h5'
-# ENCODER_PATH = 'backend/model/label_encoder_v6.pkl'
-# MAX_FRAMES = 50
-# FEATURE_DIM = 225  # 21*3 + 21*3 + 33*3
-ART_DIR = "backend/artifacts"
-MODEL_PATH = os.path.join(ART_DIR, "best_model.keras")
-LABELS_PATH = os.path.join(ART_DIR, "labels.json")
-CONFIG_PATH = os.path.join(ART_DIR, "config.json")
-
-# -------------------
-# Load model & encoder
-# -------------------
-# model = load_model(MODEL_PATH)
-# with open(ENCODER_PATH, 'rb') as f:
-#     le = pickle.load(f)
-
 @socketio.on('connect')
 def handle_connect():
     print('✅ Client connected')
@@ -185,85 +165,21 @@ def handle_landmark_data(data):
     pass # Add your data saving logic here
 
 
+ART_DIR = "backend/artifacts"
+MODEL_PATH = os.path.join(ART_DIR, "sign_model.h5")       # matches your training
+ENCODER_PATH = os.path.join(ART_DIR, "label_encoder.pkl") # ✅ you have this file
+CONFIG_PATH = os.path.join(ART_DIR, "config.json")
 
 
-# def normalize_landmarks(left, right, pose):
-#     left_coords = [0.0] * 63
-#     right_coords = [0.0] * 63
-#     pose_coords = [0.0] * 99
+print("🔁 Loading model and encoder...")
+model = tf.keras.models.load_model(MODEL_PATH)
 
-#     # Pose normalization
-#     if pose:
-#         try:
-#             lx, ly, lz = pose[11]["x"], pose[11]["y"], pose[11]["z"]
-#             rx, ry, rz = pose[12]["x"], pose[12]["y"], pose[12]["z"]
-#             cx, cy, cz = (lx + rx) / 2, (ly + ry) / 2, (lz + rz) / 2
-#             shoulder_dist = np.sqrt((rx - lx) ** 2 + (ry - ly) ** 2 + (rz - lz) ** 2)
-#             if shoulder_dist == 0:
-#                 shoulder_dist = 1e-6
-#             pose_coords = [((lm["x"] - cx) / shoulder_dist,
-#                             (lm["y"] - cy) / shoulder_dist,
-#                             (lm["z"] - cz) / shoulder_dist) for lm in pose]
-#             pose_coords = [v for lm in pose_coords for v in lm]
-#         except Exception:
-#             pass
+with open(ENCODER_PATH, "rb") as f:
+    le = pickle.load(f)
+idx_to_label = list(le.classes_)  # same as LabelEncoder.classes_
 
-#     # Left hand normalization
-#     if left:
-#         try:
-#             wrist = left[0]
-#             wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
-#             left_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in left]
-#             left_coords = [v for lm in left_coords for v in lm]
-#         except Exception:
-#             pass
-
-#     # Right hand normalization
-#     if right:
-#         try:
-#             wrist = right[0]
-#             wx, wy, wz = wrist["x"], wrist["y"], wrist["z"]
-#             right_coords = [(lm["x"] - wx, lm["y"] - wy, lm["z"] - wz) for lm in right]
-#             right_coords = [v for lm in right_coords for v in lm]
-#         except Exception:
-#             pass
-
-#     return left_coords, right_coords, pose_coords
-
-# @app.route("/predict", methods=["POST"])
-# def predict():
-#     try:
-#         json_data = request.get_json()
-#         sequence_data = json_data.get('data', [])
-
-#         if not sequence_data or len(sequence_data) != MAX_FRAMES:
-#             return jsonify({"error": f"Invalid data: sequence must have length {MAX_FRAMES}"}), 400
-
-#         processed_sequence = []
-#         for frame in sequence_data:
-#             left = frame.get("left", [])
-#             right = frame.get("right", [])
-#             pose = frame.get("pose", [])
-#             left_coords, right_coords, pose_coords = normalize_landmarks(left, right, pose)
-#             features = left_coords + right_coords + pose_coords
-#             processed_sequence.append(features)
-
-#         model_input = np.array(processed_sequence)
-#         model_input = np.expand_dims(model_input, axis=0) # (1, 50, 225)
-
-#         prediction = model.predict(model_input)[0]
-#         predicted_class_index = np.argmax(prediction)
-#         predicted_label = le.inverse_transform([predicted_class_index])[0]
-#         confidence = float(np.max(prediction))
-
-#         return jsonify({
-#             "prediction": predicted_label,
-#             "confidence": confidence
-#         })
-
-#     except Exception as e:
-#         print(f"Error during prediction: {e}")
-#         return jsonify({"error": "An error occurred during prediction."}), 500
+with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    cfg = json.load(f)
 
 class Preprocessor:
     def __init__(self, seq_len=50, n_hand=21, n_pose=33):
@@ -359,35 +275,31 @@ def load_sequence_from_json_obj(obj):
     if isinstance(obj, dict) and all(k in obj for k in ['left', 'right', 'pose']):
         return [obj]
     return []
-
-
-if not os.path.exists(MODEL_PATH):
-    raise RuntimeError("Model not found! Train first.")
-
-model = tf.keras.models.load_model(MODEL_PATH)
-
-with open(LABELS_PATH, "r", encoding="utf-8") as f:
-    idx_to_label = json.load(f)
-
-with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-    cfg = json.load(f)
-
 prep = Preprocessor(
     seq_len=cfg["SEQ_LEN"],
     n_hand=cfg["N_HAND"],
     n_pose=cfg["N_POSE"]
 )
 
+# Warm up TensorFlow model (for faster first prediction)
+dummy = np.zeros((1, cfg["SEQ_LEN"], prep.FEAT_PER_FRAME), dtype=np.float32)
+_ = model.predict(dummy, verbose=0)
+print("✅ Model warm-up complete.")
 
 # ---------------------------
-# PREDICT API
+# FLASK APP
 # ---------------------------
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "✅ SignPredict API running"})
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         body = request.get_json()
         if not isinstance(body, dict) or "data" not in body:
-            return jsonify({"error": "Invalid request format"}), 400
+            return jsonify({"error": "Invalid request format. Expected {'data': [...]}"}), 400
 
         seq_obj = load_sequence_from_json_obj(body["data"])
         feats = prep.preprocess_sequence(seq_obj)
@@ -400,11 +312,12 @@ def predict():
 
         return jsonify({
             "prediction": label,
-            "confidence": conf
+            "confidence": conf,
+            "probs": {idx_to_label[i]: float(p) for i, p in enumerate(probs)}  # optional
         })
-    
+
     except Exception as e:
-        print("Prediction error:", e)
+        print("❌ Prediction error:", e)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/save_data', methods=['POST'])
